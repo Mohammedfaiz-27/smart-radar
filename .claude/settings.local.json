@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run:*)",
+      "Bash(uv pip install:*)",
+      "Bash(curl:*)",
+      "Bash(python3:*)",
+      "Bash(lsof:*)",
+      "Bash(timeout 30 uv run:*)",
+      "Bash(time uv run:*)",
+      "Read(//Users/Samrt radar Final /frontend/**)",
+      "Bash(npm run dev:*)",
+      "Bash(chmod:*)",
+      "Read(//Users/Samrt radar Final /backend/app/api/**)",
+      "Read(//Users/Samrt radar Final /backend/app/services/**)",
+      "Read(//Users/Samrt radar Final /backend/**)",
+      "Read(//Users/Samrt radar Final /**)",
+      "Bash(awk:*)",
+      "Bash(xargs kill:*)",
+      "Bash(cat:*)",
+      "Bash(docker ps:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

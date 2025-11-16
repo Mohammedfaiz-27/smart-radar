@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(lsof:*)",
+      "Bash(pkill:*)",
+      "Read(//Users/**)",
+      "Bash(mongosh:*)",
+      "Bash(cd:*)",
+      "Bash(echo $MONGODB_URL)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
