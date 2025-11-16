@@ -15,7 +15,7 @@ from app.core.logging_config import setup_logging as setup_app_logging
 from app.core.celery_instance import celery_app
 
 # MongoDB URL for Celery broker and result backend
-mongodb_url = os.getenv("MONGODB_URL", "mongodb://localhost:27017/smart_radar")
+mongodb_url = os.getenv("MONGODB_URL", "mongodb+srv://smart_radar_db_user:<db_password>@smart-radar.exjrbpk.mongodb.net/smart_radar?retryWrites=true&w=majority&appName=smart-radar")
 
 # Automatic collection configuration from environment variables
 ENABLE_AUTO_COLLECTION = os.getenv("ENABLE_AUTO_COLLECTION", "true").lower() == "true"

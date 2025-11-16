@@ -42,6 +42,7 @@ class Database:
             mongodb_url = os.getenv("MONGODB_URL")
 
             # Create a new client for this event loop
+            # For MongoDB Atlas, use TLS but verify certificates
             self._clients[loop_id] = AsyncIOMotorClient(
                 mongodb_url,
                 maxPoolSize=50,
@@ -52,8 +53,8 @@ class Database:
                 connectTimeoutMS=10000,
                 retryWrites=True,
                 retryReads=True,
-                tlsAllowInvalidCertificates=True,
-                tlsAllowInvalidHostnames=True,
+                tls=True,
+                tlsAllowInvalidCertificates=False,
             )
             
             # Create database instance for this event loop
