@@ -6,6 +6,7 @@ export const useClustersStore = defineStore('clusters', () => {
   const clusters = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const initialized = ref(false) // Track if data has been loaded
 
   // Computed properties for cluster grouping
   const ownClusters = computed(() => 
@@ -61,15 +62,22 @@ export const useClustersStore = defineStore('clusters', () => {
   }
 
   // Fetch all clusters
-  const fetchClusters = async (filters = {}) => {
+  const fetchClusters = async (filters = {}, force = false) => {
+    // Skip fetching if already initialized and not forced
+    if (initialized.value && !force && Object.keys(filters).length === 0) {
+      console.log('📦 Using cached clusters data')
+      return
+    }
+
     loading.value = true
     error.value = null
-    
+
     try {
       console.log('📊 Fetching clusters with filters:', filters)
       const response = await clustersApi.getAll(filters)
       clusters.value = response.data || []
-      
+      initialized.value = true
+
       console.log(`✅ Loaded ${clusters.value.length} clusters`)
       console.log('Own clusters:', ownClusters.value.length)
       console.log('Competitor clusters:', competitorClusters.value.length)
@@ -79,6 +87,11 @@ export const useClustersStore = defineStore('clusters', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  // Force refresh data from backend
+  const refreshClusters = async (filters = {}) => {
+    return await fetchClusters(filters, true)
   }
 
   // Create new cluster
@@ -172,10 +185,11 @@ export const useClustersStore = defineStore('clusters', () => {
     clusters,
     loading,
     error,
+    initialized,
     ownClusters,
     competitorClusters,
     activeClusters,
-    
+
     // Getters
     getClusterById,
     getClusterByName,
@@ -184,9 +198,10 @@ export const useClustersStore = defineStore('clusters', () => {
     getKeywordsByType,
     getMatchingClusters,
     isContentMatchingCluster,
-    
+
     // Actions
     fetchClusters,
+    refreshClusters,
     createCluster,
     updateCluster,
     deleteCluster

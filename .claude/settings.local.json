@@ -18,7 +18,11 @@
       "Bash(awk:*)",
       "Bash(xargs kill:*)",
       "Bash(cat:*)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(\"C:\\Users\\Asus\\Downloads\\Samrt radar Final\\Samrt radar Final\\DEPLOYMENT_NEW.md\")",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(timeout 60 uv run:*)"
     ],
     "deny": [],
     "ask": []

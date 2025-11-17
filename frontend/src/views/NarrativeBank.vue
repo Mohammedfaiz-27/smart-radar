@@ -1,35 +1,20 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b">
-      <div class="max-w-7xl mx-auto px-6 py-6">
-        <!-- Back Button -->
-        <div class="mb-4">
-          <router-link 
-            to="/" 
-            class="inline-flex items-center text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
-            </svg>
-            Back to Dashboard
-          </router-link>
+  <div>
+    <!-- Page Header -->
+    <div class="max-w-7xl mx-auto px-6 py-6 bg-white border-b">
+      <div class="flex justify-between items-start">
+        <div>
+          <h1 class="text-3xl font-bold text-gray-900">Narrative Bank</h1>
+          <p class="text-gray-600 mt-1">Ready-to-use DMK narratives for content creation and crisis response</p>
         </div>
-        
-        <div class="flex justify-between items-start">
-          <div>
-            <h1 class="text-3xl font-bold text-gray-900">Narrative Bank</h1>
-            <p class="text-gray-600 mt-1">Ready-to-use DMK narratives for content creation and crisis response</p>
-          </div>
-          <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
-            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-            </svg>
-            Add Narrative
-          </button>
-        </div>
+        <button class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium flex items-center">
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+          </svg>
+          Add Narrative
+        </button>
       </div>
-    </header>
+    </div>
 
     <!-- Filters -->
     <div class="max-w-7xl mx-auto px-6 py-6">

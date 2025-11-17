@@ -1,44 +1,16 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center space-x-4">
-            <button @click="$router.go(-1)" class="text-gray-600 hover:text-gray-900">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-              </svg>
-            </button>
-            <router-link to="/" class="text-2xl font-bold text-gray-900">SMART RADAR</router-link>
-            <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
-              {{ name }} Posts by Platform
-            </span>
-          </div>
-          
-          <nav class="flex space-x-4">
-            <router-link 
-              to="/" 
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-900"
-            >
-              Dashboard
-            </router-link>
-            <router-link 
-              to="/clusters" 
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-900"
-            >
-              Clusters
-            </router-link>
-            <router-link 
-              to="/narratives" 
-              class="px-3 py-2 rounded-md text-sm font-medium text-gray-500 hover:text-gray-900"
-            >
-              Narratives
-            </router-link>
-          </nav>
-        </div>
+  <div>
+    <!-- Page Header with Back Button -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 bg-white border-b">
+      <div class="flex items-center space-x-4">
+        <button @click="$router.go(-1)" class="text-gray-600 hover:text-gray-900">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+          </svg>
+        </button>
+        <h1 class="text-2xl font-bold text-gray-900">{{ name }} Posts by Platform</h1>
       </div>
-    </header>
+    </div>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">

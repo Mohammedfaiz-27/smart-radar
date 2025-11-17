@@ -6,6 +6,7 @@ export const usePostsStore = defineStore('posts', () => {
   const posts = ref([])
   const loading = ref(false)
   const error = ref(null)
+  const initialized = ref(false) // Track if data has been loaded
 
   // Helper function to transform monitored_content to legacy post format
   const transformContentToPost = (content) => {
@@ -79,16 +80,23 @@ export const usePostsStore = defineStore('posts', () => {
     return threatPosts.value.filter(post => post.platform === platform)
   }
 
-  const fetchPosts = async (filters = {}) => {
+  const fetchPosts = async (filters = {}, force = false) => {
+    // Skip fetching if already initialized and not forced
+    if (initialized.value && !force && Object.keys(filters).length === 0) {
+      console.log('📦 Using cached posts data')
+      return
+    }
+
     loading.value = true
     error.value = null
-    
+
     try {
       // Always use posts_table API for current data (bypass smart selector)
       console.log('📊 Fetching data from posts_table API', filters)
       const response = await postsApi.getAll(filters)
       posts.value = response.data
-      
+      initialized.value = true
+
       console.log(`✅ Loaded ${posts.value.length} posts with filters:`, filters)
     } catch (err) {
       error.value = err.response?.data?.detail || 'Failed to fetch posts'
@@ -96,6 +104,11 @@ export const usePostsStore = defineStore('posts', () => {
     } finally {
       loading.value = false
     }
+  }
+
+  // Force refresh data from backend
+  const refreshPosts = async (filters = {}) => {
+    return await fetchPosts(filters, true)
   }
 
   const fetchOwnPosts = async () => {
@@ -187,10 +200,12 @@ export const usePostsStore = defineStore('posts', () => {
     posts,
     loading,
     error,
+    initialized,
     ownPosts,
     competitorPosts,
     threatPosts,
     fetchPosts,
+    refreshPosts,
     fetchOwnPosts,
     fetchCompetitorPosts,
     fetchThreats,
