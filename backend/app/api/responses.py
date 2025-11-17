@@ -13,14 +13,14 @@ response_service = ResponseService()
 
 class GenerateResponseRequest(BaseModel):
     original_post_id: str
-    tone: str = "Sarcastic"  # Sarcastic, Assertive, Professional
+    tone: str = "Professional"  # Professional (default), Sarcastic, Assertive
     language: str = "Tamil"  # Tamil, English
     user_id: str = "default"
 
 class LogResponseRequest(BaseModel):
     original_post_id: str
     generated_text: str
-    tone: str = "Sarcastic"
+    tone: str = "Professional"
     language: str = "Tamil"
     user_id: str = "default"
 

@@ -27,7 +27,20 @@
       "Bash(timeout 5 bash:*)",
       "Bash(npm run lint)",
       "Bash(npm install)",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(netstat:*)",
+      "Bash(timeout 5 curl:*)",
+      "Bash(taskkill /F /PID 19048)",
+      "Bash(taskkill //F //PID 19048)",
+      "Bash(start cmd /k \"uv run python main.py\")",
+      "Bash(timeout 10 bash -c 'while ! curl -s http://127.0.0.1:8000/health > /dev/null 2>&1; do echo \"\"Waiting for backend...\"\"; sleep 2; done; echo \"\"Backend is ready!\"\"')",
+      "Bash(timeout 10 curl:*)",
+      "Bash(python -m json.tool:*)",
+      "Bash(timeout 30 curl:*)",
+      "Bash(timeout 60 curl:*)",
+      "Bash(timeout 120 curl:*)",
+      "Bash(timeout 180 uv run:*)",
+      "Bash(timeout 15 bash:*)"
     ],
     "deny": [],
     "ask": []
