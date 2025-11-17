@@ -1,5 +1,8 @@
 <template>
-  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+  <div :class="[
+    'grid grid-cols-1 gap-4 mb-6',
+    hasCompetitorClusters ? 'md:grid-cols-2 lg:grid-cols-4' : 'md:grid-cols-3 lg:grid-cols-3'
+  ]">
     <!-- Posts Today Widget -->
     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       <div class="flex items-center justify-between">
@@ -22,7 +25,7 @@
     </div>
 
     <!-- Positive Posts Widget -->
-    <div 
+    <div
       class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
       @click="openModal('positive')"
     >
@@ -46,7 +49,7 @@
     </div>
 
     <!-- Negative Posts Widget -->
-    <div 
+    <div
       class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
       @click="openModal('negative')"
     >
@@ -69,8 +72,9 @@
       </div>
     </div>
 
-    <!-- Opportunities Widget -->
-    <div 
+    <!-- Opportunities Widget - Only show if competitor clusters exist -->
+    <div
+      v-if="hasCompetitorClusters"
       class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 cursor-pointer hover:shadow-md transition-shadow"
       @click="openModal('opportunities')"
     >
@@ -106,9 +110,14 @@
 import { ref, onMounted, computed, reactive } from 'vue'
 import WidgetDetailsModal from './WidgetDetailsModal.vue'
 import { usePostsStore } from '@/stores/posts'
+import { useClustersStore } from '@/stores/clusters'
 
-// Initialize posts store
+// Initialize stores
 const postsStore = usePostsStore()
+const clustersStore = useClustersStore()
+
+// Check if competitor clusters exist
+const hasCompetitorClusters = computed(() => clustersStore.competitorClusters.length > 0)
 
 // Stats data
 const stats = ref({
