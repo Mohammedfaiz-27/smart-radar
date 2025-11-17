@@ -5,7 +5,7 @@ import { responsesApi } from '@/services/api'
 export const useResponseStore = defineStore('response', () => {
   const isResponsePanelOpen = ref(false)
   const currentPost = ref(null)
-  const selectedTone = ref('Sarcastic')
+  const selectedTone = ref('Professional')
   const selectedLanguage = ref('Tamil')
   const responseOptions = ref([])
   const selectedOption = ref(null)
@@ -15,7 +15,7 @@ export const useResponseStore = defineStore('response', () => {
   const openResponsePanel = (post) => {
     currentPost.value = post
     isResponsePanelOpen.value = true
-    selectedTone.value = 'Sarcastic'
+    selectedTone.value = 'Professional'
     selectedLanguage.value = 'Tamil'
     responseOptions.value = []
     selectedOption.value = null
@@ -25,7 +25,7 @@ export const useResponseStore = defineStore('response', () => {
   const closeResponsePanel = () => {
     isResponsePanelOpen.value = false
     currentPost.value = null
-    selectedTone.value = 'Sarcastic'
+    selectedTone.value = 'Professional'
     selectedLanguage.value = 'Tamil'
     responseOptions.value = []
     selectedOption.value = null
