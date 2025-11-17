@@ -63,9 +63,9 @@ export const useClustersStore = defineStore('clusters', () => {
 
   // Fetch all clusters
   const fetchClusters = async (filters = {}, force = false) => {
-    // Skip fetching if already initialized and not forced
-    if (initialized.value && !force && Object.keys(filters).length === 0) {
-      console.log('📦 Using cached clusters data')
+    // Skip fetching if already initialized and not forced, but only when we actually have data
+    if (initialized.value && !force && Object.keys(filters).length === 0 && clusters.value.length > 0) {
+      console.log('📦 Using cached clusters data:', clusters.value.length, 'clusters')
       return
     }
 
@@ -84,6 +84,8 @@ export const useClustersStore = defineStore('clusters', () => {
     } catch (err) {
       error.value = err.response?.data?.detail || 'Failed to fetch clusters'
       console.error('Error fetching clusters:', err)
+      // Don't mark as initialized if fetch failed
+      initialized.value = false
     } finally {
       loading.value = false
     }

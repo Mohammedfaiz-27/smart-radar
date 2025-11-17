@@ -81,9 +81,9 @@ export const usePostsStore = defineStore('posts', () => {
   }
 
   const fetchPosts = async (filters = {}, force = false) => {
-    // Skip fetching if already initialized and not forced
-    if (initialized.value && !force && Object.keys(filters).length === 0) {
-      console.log('📦 Using cached posts data')
+    // Skip fetching if already initialized and not forced, but only when we actually have data
+    if (initialized.value && !force && Object.keys(filters).length === 0 && posts.value.length > 0) {
+      console.log('📦 Using cached posts data:', posts.value.length, 'posts')
       return
     }
 
@@ -101,6 +101,8 @@ export const usePostsStore = defineStore('posts', () => {
     } catch (err) {
       error.value = err.response?.data?.detail || 'Failed to fetch posts'
       console.error('Error fetching posts:', err)
+      // Don't mark as initialized if fetch failed
+      initialized.value = false
     } finally {
       loading.value = false
     }

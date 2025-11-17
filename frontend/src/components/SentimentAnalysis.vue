@@ -245,7 +245,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePostsStore } from '@/stores/posts'
 import { useClustersStore } from '@/stores/clusters'
-import { 
+import api from '@/services/api'
+import {
   ChatBubbleLeftRightIcon,
   GlobeAltIcon,
   PlayIcon,
@@ -497,9 +498,9 @@ const fetchSentimentData = async () => {
           : '/api/v1/sentiment/overall'
       }
       
-      const response = await fetch(`http://localhost:8000${endpoint}`)
-      if (response.ok) {
-        sentimentData.value = await response.json()
+      const response = await api.get(endpoint)
+      if (response.data) {
+        sentimentData.value = response.data
       }
     } catch (fallbackError) {
       console.error('Fallback API also failed:', fallbackError)
@@ -565,13 +566,18 @@ const handlePlatformClick = async (platform, platformData) => {
   try {
     // Fetch posts for this platform and cluster type
     const clusterType = (props.type === 'organization' || props.type === 'own') ? 'own' : 'competitor'
-    const response = await fetch(`http://localhost:8000/api/v1/posts?cluster_type=${clusterType}&platform=${platform}`)
-    
-    if (response.ok) {
-      const posts = await response.json()
+    const response = await api.get('/api/v1/posts', {
+      params: {
+        cluster_type: clusterType,
+        platform: platform
+      }
+    })
+
+    if (response.data) {
+      const posts = response.data
       const platformName = formatPlatformName(platform)
       const title = `${clusterType === 'own' ? 'Our Organization' : 'Competitors'} - ${platformName}`
-      
+
       emit('openPlatformModal', {
         title,
         posts,

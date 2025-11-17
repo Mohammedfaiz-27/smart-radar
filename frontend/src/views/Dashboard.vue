@@ -5,8 +5,11 @@
       <!-- Dashboard Widgets -->
       <DashboardWidgets />
       
-      <!-- Dashboard Layout - 3 Column Grid with Equal Heights -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 lg:grid-rows-1">
+      <!-- Dashboard Layout - Dynamic Grid with Equal Heights -->
+      <div :class="[
+        'grid grid-cols-1 gap-6 mb-8 lg:grid-rows-1',
+        competitorClusters.length > 0 ? 'lg:grid-cols-3' : 'lg:grid-cols-2'
+      ]">
         <!-- Threat Monitor -->
         <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col">
           <ThreatAlerts class="flex-1" />
@@ -26,17 +29,20 @@
               ↗ 3.2%
             </span>
           </div>
-          
+
           <!-- Own sentiment breakdown -->
-          <SentimentAnalysis 
+          <SentimentAnalysis
             type="own"
             title="Organization"
             @openPlatformModal="openModal"
           />
         </div>
 
-        <!-- Competitor Sentiment Analysis -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col">
+        <!-- Competitor Sentiment Analysis - Only show if competitor clusters exist -->
+        <div
+          v-if="competitorClusters.length > 0"
+          class="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 flex flex-col"
+        >
           <!-- Header -->
           <div class="flex items-center justify-between mb-6">
             <div>
@@ -49,9 +55,9 @@
               ↗ 3.2%
             </span>
           </div>
-          
+
           <!-- Competitor sentiment breakdown -->
-          <SentimentAnalysis 
+          <SentimentAnalysis
             type="competitors"
             title="Competitors"
             @openPlatformModal="openModal"

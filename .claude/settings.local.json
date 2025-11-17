@@ -22,7 +22,12 @@
       "Bash(\"C:\\Users\\Asus\\Downloads\\Samrt radar Final\\Samrt radar Final\\DEPLOYMENT_NEW.md\")",
       "Bash(tasklist:*)",
       "Bash(findstr:*)",
-      "Bash(timeout 60 uv run:*)"
+      "Bash(timeout 60 uv run:*)",
+      "Bash(timeout 3 curl:*)",
+      "Bash(timeout 5 bash:*)",
+      "Bash(npm run lint)",
+      "Bash(npm install)",
+      "Bash(npm run build:*)"
     ],
     "deny": [],
     "ask": []
