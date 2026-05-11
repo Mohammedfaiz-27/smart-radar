@@ -203,7 +203,6 @@ backend/logs/
 # API Keys and sensitive files
 .env
 .env.local
-.env.production
 config/production.py
 config/local.py
 
