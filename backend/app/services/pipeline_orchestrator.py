@@ -22,7 +22,7 @@ from app.services.posts_table_service import PostsTableService
 from app.services.raw_data_service import RawDataService
 from app.services.social_post_service import SocialPostService
 from app.services.cluster_service import ClusterService
-from app.models.posts_table import PostCreate, Platform
+from app.models.posts_table import PostCreate, Platform, SentimentLabel
 from app.models.raw_data import RawDataCreate, ProcessingStatus
 from app.models.cluster import DashboardType
 
@@ -331,7 +331,12 @@ class PipelineOrchestrator:
         """
         try:
             from app.models.social_post import SocialPostCreate
-            
+            from app.models.common import IntelligenceV19
+
+            # social_posts only supports X, Facebook, YouTube
+            if post.platform.value not in ("X", "Facebook", "YouTube"):
+                return
+
             # Convert to social_post format
             social_post = SocialPostCreate(
                 cluster_id=post.cluster_id,
@@ -347,7 +352,12 @@ class PipelineOrchestrator:
                     "views": post.views
                 },
                 sentiment=post.sentiment_label.value if post.sentiment_label else "neutral",
-                cluster_type=cluster.cluster_type
+                cluster_type=cluster.cluster_type,
+                intelligence=IntelligenceV19(
+                    relational_summary="Pending analysis",
+                    entity_sentiments={},
+                    threat_level="low"
+                )
             )
             
             # Save using social post service
