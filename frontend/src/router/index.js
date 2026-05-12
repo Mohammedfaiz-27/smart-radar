@@ -6,6 +6,8 @@ import ClusterDetail from '@/views/ClusterDetail.vue'
 import ClusterPosts from '@/views/ClusterPosts.vue'
 import PlatformDetail from '@/views/PlatformDetail.vue'
 import NarrativeBank from '@/views/NarrativeBank.vue'
+import PublishHub from '@/views/PublishHub.vue'
+import DraftsQueue from '@/views/DraftsQueue.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -28,6 +30,16 @@ const router = createRouter({
           path: 'narratives',
           name: 'narratives',
           component: NarrativeBank
+        },
+        {
+          path: 'publish',
+          name: 'publish',
+          component: PublishHub
+        },
+        {
+          path: 'drafts',
+          name: 'drafts',
+          component: DraftsQueue
         },
         {
           path: 'clusters/:name',

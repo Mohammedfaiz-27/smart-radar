@@ -22,6 +22,7 @@ from app.api.threat_campaigns import router as threat_campaigns_router
 from app.api.news import router as news_router
 from app.api.migration import router as migration_router
 from app.api.content import router as content_router
+from app.api.smart_post import router as smart_post_router
 from app.services.websocket_manager import WebSocketManager
 
 # Load environment variables (override any existing env vars)
@@ -72,6 +73,13 @@ async def startup_db_client():
     except Exception as e:
         logger.error(f"❌ Error during startup collection: {e}")
 
+    from app.services.smart_post_service import SmartPostService
+    try:
+        await SmartPostService().ensure_tables()
+        logger.info("✅ Smart Post tables ready")
+    except Exception as e:
+        logger.error(f"❌ Smart Post table migration failed: {e}")
+
 @app.on_event("shutdown")
 async def shutdown_db_client():
     logger.info("🔌 Closing MongoDB connection")
@@ -90,6 +98,7 @@ app.include_router(threat_campaigns_router, prefix="/api/v1/threat-campaigns", t
 app.include_router(news_router, prefix="/api/v1/news", tags=["news"])
 app.include_router(migration_router, tags=["migration"])
 app.include_router(content_router, prefix="/api/v1/content", tags=["content"])
+app.include_router(smart_post_router, prefix="/v1", tags=["smart-post"])
 
 # WebSocket endpoint
 @app.websocket("/ws")

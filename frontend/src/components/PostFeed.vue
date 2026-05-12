@@ -13,19 +13,38 @@
 
     <!-- Posts List -->
     <div v-else class="space-y-4 max-h-96 overflow-y-auto">
-      <PostCard 
-        v-for="post in posts" 
-        :key="post.id" 
+      <PostCard
+        v-for="post in posts"
+        :key="post.id"
         :post="post"
         :feed-type="feedType"
         @respond="handleRespond"
+        @create-post="handleCreatePost"
+        @news-card="handleNewsCard"
       />
     </div>
   </div>
+
+  <!-- Content Creator modal -->
+  <ContentCreator
+    :is-open="contentCreatorOpen"
+    :post="activePost"
+    @close="contentCreatorOpen = false"
+  />
+
+  <!-- News Card Generator -->
+  <NewsCardGenerator
+    :is-open="newsCardOpen"
+    :post="activePost"
+    @close="newsCardOpen = false"
+  />
 </template>
 
 <script setup>
+import { ref } from 'vue'
 import PostCard from './PostCard.vue'
+import ContentCreator from './ContentCreator.vue'
+import NewsCardGenerator from './NewsCardGenerator.vue'
 
 defineProps({
   posts: {
@@ -45,7 +64,21 @@ defineProps({
 
 const emit = defineEmits(['respond'])
 
+const activePost = ref(null)
+const contentCreatorOpen = ref(false)
+const newsCardOpen = ref(false)
+
 const handleRespond = (post) => {
   emit('respond', post)
+}
+
+const handleCreatePost = (post) => {
+  activePost.value = post
+  contentCreatorOpen.value = true
+}
+
+const handleNewsCard = (post) => {
+  activePost.value = post
+  newsCardOpen.value = true
 }
 </script>

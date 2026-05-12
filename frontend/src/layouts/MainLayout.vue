@@ -87,6 +87,27 @@
                 </svg>
                 <span>Narratives</span>
               </router-link>
+              <router-link
+                to="/publish"
+                class="flex items-center space-x-2 text-sm font-medium pb-1"
+                :class="$route.path.startsWith('/publish') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                </svg>
+                <span>Publish</span>
+              </router-link>
+              <router-link
+                to="/drafts"
+                class="flex items-center space-x-2 text-sm font-medium pb-1"
+                :class="$route.path === '/drafts' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
+              >
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+                <span>Drafts</span>
+                <span v-if="pendingCount > 0" class="ml-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{{ pendingCount }}</span>
+              </router-link>
             </nav>
           </div>
         </div>
@@ -105,10 +126,14 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { usePostsStore } from '@/stores/posts'
 import { useClustersStore } from '@/stores/clusters'
+import { useSmartPostStore } from '@/stores/smartpost'
 import ResponsePanel from '@/components/ResponsePanel.vue'
 
 const postsStore = usePostsStore()
 const clustersStore = useClustersStore()
+const smartPostStore = useSmartPostStore()
+
+const pendingCount = computed(() => smartPostStore.pendingDrafts.length)
 
 // Use cluster store computed properties
 const ownClusters = computed(() => clustersStore.ownClusters)

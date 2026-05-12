@@ -172,15 +172,22 @@
           </div>
 
           <!-- Footer Actions -->
-          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-            <button 
+          <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse gap-3">
+            <button
+              v-if="responseStore.responseOptions.length > 0 && responseStore.selectedOption !== null"
+              @click="openPublish"
+              class="w-full sm:w-auto inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 sm:text-sm"
+            >
+              Publish to Platforms
+            </button>
+            <button
               v-if="responseStore.responseOptions.length > 0 && responseStore.selectedOption !== null"
               @click="copyResponse"
-              class="btn-primary w-full sm:w-auto sm:ml-3"
+              class="btn-primary w-full sm:w-auto"
             >
-              Copy Selected Response
+              Copy Response
             </button>
-            <button 
+            <button
               @click="responseStore.closeResponsePanel"
               class="btn-secondary w-full sm:w-auto mt-3 sm:mt-0"
             >
@@ -191,15 +198,37 @@
       </div>
     </div>
   </Teleport>
+
+  <!-- Publish modal triggered from ResponsePanel -->
+  <PublishModal
+    :is-open="showPublish"
+    :post="responseStore.currentPost"
+    :initial-text="selectedResponseText"
+    @close="showPublish = false"
+  />
 </template>
 
 <script setup>
+import { ref, computed } from 'vue'
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useResponseStore } from '@/stores/response'
 import { useNotificationsStore } from '@/stores/notifications'
+import PublishModal from '@/components/PublishModal.vue'
 
 const responseStore = useResponseStore()
 const notificationsStore = useNotificationsStore()
+
+const showPublish = ref(false)
+
+const selectedResponseText = computed(() => {
+  const idx = responseStore.selectedOption
+  if (idx === null || idx === undefined) return ''
+  return responseStore.responseOptions[idx] || ''
+})
+
+function openPublish() {
+  showPublish.value = true
+}
 
 const copyResponse = async () => {
   const success = await responseStore.copyToClipboard()

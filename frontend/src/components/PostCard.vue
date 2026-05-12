@@ -135,24 +135,42 @@
 
     <!-- Actions -->
     <div class="flex items-center justify-between">
-      <a 
-        :href="post.post_url" 
-        target="_blank" 
+      <a
+        :href="post.post_url"
+        target="_blank"
         class="text-xs text-primary-600 hover:text-primary-700"
       >
         View Original
       </a>
-      
+
       <div class="flex items-center space-x-2">
-        <button 
+        <!-- Respond (opens ResponsePanel with AI generation + publish) -->
+        <button
           v-if="!post.has_been_responded_to"
           @click="handleRespond"
           class="btn-primary text-xs px-3 py-1"
         >
           {{ getButtonText }}
         </button>
-        <span 
-          v-else 
+
+        <!-- Create Post (opens ContentCreator — multi-platform AI content) -->
+        <button
+          @click="emit('create-post', post)"
+          class="text-xs px-3 py-1 rounded border border-blue-300 text-blue-600 hover:bg-blue-50 transition-colors"
+        >
+          ✨ AI Post
+        </button>
+
+        <!-- News Card -->
+        <button
+          @click="emit('news-card', post)"
+          class="text-xs px-3 py-1 rounded border border-purple-300 text-purple-600 hover:bg-purple-50 transition-colors"
+        >
+          🗞 Card
+        </button>
+
+        <span
+          v-if="post.has_been_responded_to"
           class="text-xs text-green-600 font-medium"
         >
           ✓ Responded
@@ -164,7 +182,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { 
+import {
   ExclamationTriangleIcon,
   ChatBubbleLeftIcon,
   BuildingOfficeIcon
@@ -182,10 +200,13 @@ const props = defineProps({
   }
 })
 
+const emit = defineEmits(['respond', 'create-post', 'news-card'])
+
 const responseStore = useResponseStore()
 
 const handleRespond = () => {
   responseStore.openResponsePanel(props.post)
+  emit('respond', props.post)
 }
 
 const platformIcon = computed(() => {
