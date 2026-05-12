@@ -4,7 +4,6 @@ API endpoints for threat campaign management
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
-from bson import ObjectId
 from pydantic import BaseModel
 
 from app.core.database import get_database

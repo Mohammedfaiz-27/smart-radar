@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 from enum import Enum
-from bson import ObjectId
 
 class Platform(str, Enum):
     """Supported social media platforms"""
@@ -148,14 +147,9 @@ class PostUpdate(BaseModel):
 
 class PostInDB(PostBase):
     """Post model as stored in database"""
-    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 class PostResponse(PostBase):
     """Post response model for API"""

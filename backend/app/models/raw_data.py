@@ -6,7 +6,6 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from pydantic import BaseModel, Field
 from enum import Enum
-from bson import ObjectId
 
 class ProcessingStatus(str, Enum):
     """Processing status for raw data"""

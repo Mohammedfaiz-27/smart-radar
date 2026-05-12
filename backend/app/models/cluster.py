@@ -4,23 +4,7 @@ Cluster data model for MongoDB
 from pydantic import BaseModel, Field
 from typing import List, Dict, Any, Literal, Optional
 from datetime import datetime
-from bson import ObjectId
 from enum import Enum
-
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
-
-    @classmethod
-    def __get_pydantic_json_schema__(cls, _source_type, _handler):
-        return {"type": "string"}
 
 class DashboardType(str, Enum):
     """Dashboard type for cluster display"""
@@ -75,14 +59,9 @@ class ClusterUpdate(BaseModel):
 
 class ClusterInDB(ClusterBase):
     """Cluster model stored in database"""
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 class ClusterResponse(ClusterBase):
     """Cluster response model"""

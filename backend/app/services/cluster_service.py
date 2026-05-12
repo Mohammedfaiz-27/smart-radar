@@ -1,116 +1,112 @@
 """
-Business logic for cluster management
+Business logic for cluster management - Supabase/PostgreSQL
 """
+import json
+import logging
 from typing import List, Optional
-from bson import ObjectId
 from datetime import datetime
 
 from app.core.database import get_database
-from app.models.cluster import ClusterCreate, ClusterUpdate, ClusterInDB, ClusterResponse
+from app.models.cluster import ClusterCreate, ClusterUpdate, ClusterResponse
+
+logger = logging.getLogger(__name__)
+
+
+def _row_to_response(row) -> ClusterResponse:
+    d = dict(row)
+    d["id"] = str(d["id"])
+    for field in ("thresholds", "platform_config"):
+        if isinstance(d.get(field), str):
+            d[field] = json.loads(d[field])
+    if isinstance(d.get("keywords"), str):
+        d["keywords"] = json.loads(d["keywords"])
+    return ClusterResponse(**d)
+
 
 class ClusterService:
     def __init__(self):
         pass
 
     async def create_cluster(self, cluster_data: ClusterCreate) -> ClusterResponse:
-        """Create a new cluster"""
-        db = get_database()
-        if db is None:
-            raise RuntimeError("Database connection is not available")
-        collection = db.clusters
-        
-        cluster_dict = cluster_data.dict()
-        cluster_dict["created_at"] = datetime.utcnow()
-        cluster_dict["updated_at"] = datetime.utcnow()
-        
-        result = await collection.insert_one(cluster_dict)
-        created_cluster = await collection.find_one({"_id": result.inserted_id})
-        
-        return self._format_cluster_response(created_cluster)
+        pool = get_database()
+        d = cluster_data.dict()
+        now = datetime.utcnow()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO clusters
+                    (name, cluster_type, dashboard_type, keywords, thresholds,
+                     platform_config, fetch_frequency_minutes, is_active,
+                     created_at, updated_at)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                RETURNING *
+                """,
+                d["name"],
+                d["cluster_type"],
+                d.get("dashboard_type", "Own") if not hasattr(d.get("dashboard_type"), "value") else d["dashboard_type"].value,
+                d.get("keywords", []),
+                json.dumps(d.get("thresholds", {}), default=str),
+                json.dumps(d.get("platform_config", {}), default=str),
+                d.get("fetch_frequency_minutes", 30),
+                d.get("is_active", True),
+                now,
+                now,
+            )
+        return _row_to_response(row)
 
     async def get_cluster(self, cluster_id: str) -> Optional[ClusterResponse]:
-        """Get cluster by ID"""
-        if not ObjectId.is_valid(cluster_id):
-            return None
+        pool = get_database()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                "SELECT * FROM clusters WHERE id = $1::uuid", cluster_id
+            )
+        return _row_to_response(row) if row else None
 
-        db = get_database()
-        if db is None:
-            raise RuntimeError("Database connection is not available")
-        collection = db.clusters
-        cluster = await collection.find_one({"_id": ObjectId(cluster_id)})
-        if cluster:
-            return self._format_cluster_response(cluster)
-        return None
-
-    async def get_clusters(self,
-                          cluster_type: Optional[str] = None,
-                          is_active: Optional[bool] = None,
-                          skip: int = 0,
-                          limit: int = 100) -> List[ClusterResponse]:
-        """Get all clusters with optional filters"""
-        query = {}
+    async def get_clusters(
+        self,
+        cluster_type: Optional[str] = None,
+        is_active: Optional[bool] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[ClusterResponse]:
+        pool = get_database()
+        conditions = []
+        args = []
         if cluster_type:
-            query["cluster_type"] = cluster_type
+            args.append(cluster_type)
+            conditions.append(f"cluster_type = ${len(args)}")
         if is_active is not None:
-            query["is_active"] = is_active
-
-        db = get_database()
-        if db is None:
-            raise RuntimeError("Database connection is not available")
-
-        collection = db.clusters
-        cursor = collection.find(query).skip(skip).limit(limit)
-        clusters = await cursor.to_list(length=limit)
-
-        return [self._format_cluster_response(cluster) for cluster in clusters]
+            args.append(is_active)
+            conditions.append(f"is_active = ${len(args)}")
+        where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+        args += [limit, skip]
+        query = f"SELECT * FROM clusters {where} ORDER BY created_at DESC LIMIT ${len(args)-1} OFFSET ${len(args)}"
+        async with pool.acquire() as conn:
+            rows = await conn.fetch(query, *args)
+        return [_row_to_response(r) for r in rows]
 
     async def update_cluster(self, cluster_id: str, cluster_data: ClusterUpdate) -> Optional[ClusterResponse]:
-        """Update cluster by ID"""
-        if not ObjectId.is_valid(cluster_id):
-            return None
+        update = {k: v for k, v in cluster_data.dict().items() if v is not None}
+        if not update:
+            return await self.get_cluster(cluster_id)
+        update["updated_at"] = datetime.utcnow()
 
-        update_data = {k: v for k, v in cluster_data.dict().items() if v is not None}
-        if not update_data:
-            return None
-
-        update_data["updated_at"] = datetime.utcnow()
-
-        db = get_database()
-        if db is None:
-            raise RuntimeError("Database connection is not available")
-        collection = db.clusters
-        result = await collection.update_one(
-            {"_id": ObjectId(cluster_id)},
-            {"$set": update_data}
-        )
-        
-        if result.matched_count:
-            updated_cluster = await collection.find_one({"_id": ObjectId(cluster_id)})
-            return self._format_cluster_response(updated_cluster)
-        return None
+        sets = []
+        args = []
+        for key, val in update.items():
+            args.append(json.dumps(val, default=str) if isinstance(val, dict) else val)
+            sets.append(f"{key} = ${len(args)}")
+        args.append(cluster_id)
+        query = f"UPDATE clusters SET {', '.join(sets)} WHERE id = ${len(args)}::uuid RETURNING *"
+        pool = get_database()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(query, *args)
+        return _row_to_response(row) if row else None
 
     async def delete_cluster(self, cluster_id: str) -> bool:
-        """Delete cluster by ID"""
-        if not ObjectId.is_valid(cluster_id):
-            return False
-
-        db = get_database()
-        if db is None:
-            raise RuntimeError("Database connection is not available")
-        collection = db.clusters
-        result = await collection.delete_one({"_id": ObjectId(cluster_id)})
-        return result.deleted_count > 0
-
-    def _format_cluster_response(self, cluster_data: dict) -> ClusterResponse:
-        """Format cluster data for response"""
-        cluster_data["id"] = str(cluster_data["_id"])
-        del cluster_data["_id"]
-        
-        # Handle missing timestamps for existing data
-        current_time = datetime.utcnow()
-        if "created_at" not in cluster_data:
-            cluster_data["created_at"] = current_time
-        if "updated_at" not in cluster_data:
-            cluster_data["updated_at"] = current_time
-            
-        return ClusterResponse(**cluster_data)
+        pool = get_database()
+        async with pool.acquire() as conn:
+            result = await conn.execute(
+                "DELETE FROM clusters WHERE id = $1::uuid", cluster_id
+            )
+        return result == "DELETE 1"

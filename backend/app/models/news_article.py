@@ -4,7 +4,6 @@ News Article data models for Entity-Centric Sentiment Process v19.0
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, Field
-from bson import ObjectId
 
 from app.models.common import ClusterMatch, IntelligenceV19
 

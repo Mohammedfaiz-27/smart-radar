@@ -1,48 +1,28 @@
 """
-Response Log data model for MongoDB
+Response Log data model - Supabase/PostgreSQL
 """
 from pydantic import BaseModel, Field
 from datetime import datetime
-from bson import ObjectId
+from typing import Optional
 
-class PyObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
-
-    @classmethod
-    def validate(cls, v):
-        if not ObjectId.is_valid(v):
-            raise ValueError("Invalid objectid")
-        return ObjectId(v)
-
-    @classmethod
-    def __get_pydantic_json_schema__(cls, _source_type, _handler):
-        return {"type": "string"}
 
 class ResponseLogBase(BaseModel):
-    """Base response log model"""
-    original_post_id: PyObjectId
+    original_post_id: str
     source_platform: str
-    narrative_used_id: PyObjectId
+    narrative_used_id: str = ""
     generated_response_text: str
-    responded_by_user: str
+    responded_by_user: str = "user"
+
 
 class ResponseLogCreate(ResponseLogBase):
-    """Response log creation model"""
     pass
 
+
 class ResponseLogInDB(ResponseLogBase):
-    """Response log model stored in database"""
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str
     responded_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 class ResponseLogResponse(ResponseLogBase):
-    """Response log response model"""
     id: str
     responded_at: datetime

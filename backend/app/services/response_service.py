@@ -6,7 +6,6 @@ import json
 import logging
 import traceback
 from typing import Optional
-from bson import ObjectId
 from datetime import datetime
 import google.generativeai as genai
 from dotenv import load_dotenv
@@ -69,12 +68,7 @@ class ResponseService:
             self.model = None
             logger.warning("GEMINI_API_KEY not found in environment variables")
     
-    @property
-    def collection(self):
-        if self._collection is None:
-            self._db = get_database()
-            self._collection = self._db.response_logs
-        return self._collection
+    pass
 
     async def generate_response(self,
                               original_post_id: str,
@@ -91,60 +85,12 @@ class ResponseService:
         logger.info(f"🔍 Post ID type: {type(original_post_id)}")
         logger.info(f"🔍 Post ID length: {len(original_post_id)}")
         
-        # Additional debugging: Check if it's a valid ObjectId format
-        try:
-            from bson import ObjectId
-            ObjectId(original_post_id)
-            logger.info(f"✅ Post ID is valid ObjectId format")
-        except Exception as e:
-            logger.error(f"❌ Invalid ObjectId format: {e}")
-        
         original_post = await self.post_service.get_post(original_post_id)
         logger.info(f"📊 Posts table result: {original_post is not None}")
-        
+
         if not original_post:
-            logger.error(f"❌ Post {original_post_id} not found in posts_table")
-            
-            # FALLBACK: Check if this post exists in monitored_content
-            db = get_database()
-            monitored_post = await db.monitored_content.find_one({"_id": ObjectId(original_post_id)})
-            if monitored_post:
-                logger.warning(f"🔄 Post found in monitored_content, using as fallback")
-                logger.info(f"🔍 Monitored content: platform={monitored_post.get('platform')}, author={monitored_post.get('author')}")
-                
-                # Convert monitored_content format to expected format for response generation
-                original_post = {
-                    'id': str(monitored_post['_id']),
-                    'platform': monitored_post.get('platform', 'Unknown'),
-                    'author_username': monitored_post.get('author', 'Unknown'),
-                    'post_text': monitored_post.get('content', ''),
-                    'content': monitored_post.get('content', ''),
-                    'sentiment_label': 'Neutral',  # Default since monitored_content may not have this
-                    'sentiment_score': 0.0,
-                    'post_url': monitored_post.get('url', ''),
-                    'posted_at': monitored_post.get('published_at'),
-                    'cluster_type': 'own'  # Default assumption for responses
-                }
-                
-                # Try to extract sentiment from intelligence if available
-                if monitored_post.get('intelligence', {}).get('entity_sentiments'):
-                    sentiments = monitored_post['intelligence']['entity_sentiments']
-                    # Find the first sentiment entry
-                    for entity, sentiment_data in sentiments.items():
-                        if isinstance(sentiment_data, dict) and 'label' in sentiment_data:
-                            original_post['sentiment_label'] = sentiment_data['label']
-                            original_post['sentiment_score'] = sentiment_data.get('score', 0.0)
-                            break
-                
-                logger.info(f"✅ Successfully converted monitored_content post for response generation")
-            else:
-                logger.error(f"🔍 Post not found in monitored_content either")
-                
-                # Check if any posts exist in posts_table at all
-                total_posts = await self.post_service._collection.count_documents({})
-                logger.error(f"🔍 Total posts in posts_table: {total_posts}")
-                
-                raise ValueError("Original post not found")
+            logger.error(f"❌ Post {original_post_id} not found")
+            raise ValueError("Original post not found")
 
         # Generate response using Gemini REST API (primary) with OpenAI fallback
         try:
@@ -175,42 +121,36 @@ class ResponseService:
         # Get original post from posts_table
         original_post = await self.post_service.get_post(original_post_id)
         if not original_post:
-            # FALLBACK: Check if this post exists in monitored_content
-            db = get_database()
-            monitored_post = await db.monitored_content.find_one({"_id": ObjectId(original_post_id)})
-            if monitored_post:
-                logger.warning(f"🔄 Log response: Post found in monitored_content, using as fallback")
-                original_post = {
-                    'platform': monitored_post.get('platform', 'Unknown'),
-                    'id': str(monitored_post['_id'])
-                }
-            else:
-                raise ValueError("Original post not found")
+            raise ValueError("Original post not found")
 
-        # Create response log
-        # Handle both object and dict post formats
-        platform = original_post.get('platform', 'unknown') if isinstance(original_post, dict) else getattr(original_post, 'platform', 'unknown')
-        
-        log_data = ResponseLogCreate(
-            original_post_id=ObjectId(original_post_id),
-            source_platform=platform,
-            narrative_used_id=None,  # No longer using narratives
-            generated_response_text=generated_text,
-            responded_by_user=user_id
-        )
+        platform = getattr(original_post, 'platform', 'unknown')
+        if hasattr(platform, 'value'):
+            platform = platform.value
 
-        log_dict = log_data.dict()
-        log_dict["responded_at"] = datetime.utcnow()
-        log_dict["tone_used"] = tone
-        log_dict["language_used"] = language
-        
-        result = await self.collection.insert_one(log_dict)
-        created_log = await self.collection.find_one({"_id": result.inserted_id})
-        
-        # Mark original post as responded to
+        pool = get_database()
+        async with pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                INSERT INTO response_logs
+                    (original_post_id, source_platform, narrative_used_id,
+                     generated_response_text, responded_by_user, responded_at)
+                VALUES ($1,$2,$3,$4,$5,$6)
+                RETURNING *
+                """,
+                original_post_id, str(platform), "",
+                generated_text, user_id, datetime.utcnow(),
+            )
+
         await self.post_service.mark_as_responded(original_post_id)
-        
-        return self._format_log_response(created_log)
+        return ResponseLogResponse(
+            id=str(row["id"]),
+            original_post_id=str(row["original_post_id"]),
+            source_platform=row["source_platform"],
+            narrative_used_id=row["narrative_used_id"] or "",
+            generated_response_text=row["generated_response_text"],
+            responded_by_user=row["responded_by_user"],
+            responded_at=row["responded_at"],
+        )
 
     async def _generate_ai_response(self, original_post, tone="Professional", language="Tamil") -> dict:
         """Generate AI response using Gemini 2.5 Pro with Election Commission Official Prompt"""
@@ -977,10 +917,3 @@ Do NOT use markdown formatting, do NOT use json, just return the plain JSON obje
             "option3": base_responses[2] if len(base_responses) > 2 else "People's welfare is our goal."
         }
 
-    def _format_log_response(self, log_data: dict) -> ResponseLogResponse:
-        """Format response log data for response"""
-        log_data["id"] = str(log_data["_id"])
-        log_data["original_post_id"] = str(log_data["original_post_id"])
-        log_data["narrative_used_id"] = str(log_data["narrative_used_id"])
-        del log_data["_id"]
-        return ResponseLogResponse(**log_data)
