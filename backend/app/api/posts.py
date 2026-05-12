@@ -268,10 +268,10 @@ async def get_posts(
     is_threat: Optional[bool] = None,
     sentiment_label: Optional[str] = Query(None, regex="^(Positive|Negative|Neutral)$", description="Sentiment label"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(2000, ge=1, le=5000)
+    limit: int = Query(100, ge=1, le=500)
 ):
     """Get all posts from posts_table - Enhanced for cluster-based filtering"""
-    
+
     # If cluster_type is provided but not cluster_id, get all clusters of that type
     if cluster_type and not cluster_id:
         clusters = await cluster_service.get_clusters(cluster_type=cluster_type)
@@ -280,7 +280,7 @@ async def get_posts(
         cluster_ids = [cluster_id]
     else:
         cluster_ids = None
-    
+
     # Build query parameters
     params = PostsQueryParams(
         cluster_id=cluster_ids[0] if cluster_ids and len(cluster_ids) == 1 else None,
@@ -290,18 +290,21 @@ async def get_posts(
         skip=skip,
         limit=limit
     )
-    
+
     # Get posts from posts_table
     posts_responses = await posts_table_service.query_posts(params)
-    
+
+    # Pre-fetch all unique clusters in one pass to avoid N+1 queries
+    cluster_ids_needed = {p.cluster_id for p in posts_responses if p.cluster_id}
+    cluster_cache = {}
+    for cid in cluster_ids_needed:
+        cluster_cache[cid] = await cluster_service.get_cluster(cid)
+
     # Convert to legacy format for frontend compatibility
     posts = []
     for post in posts_responses:
-        # Get cluster info to determine cluster_type
-        cluster = None
-        if post.cluster_id:
-            cluster = await cluster_service.get_cluster(post.cluster_id)
-        
+        cluster = cluster_cache.get(post.cluster_id) if post.cluster_id else None
+
         post_dict = {
             "id": post.id,
             "platform": post.platform,
@@ -371,15 +374,18 @@ async def get_threat_posts(
     )
     
     threat_posts = await posts_table_service.query_posts(params)
-    
+
+    # Pre-fetch clusters to avoid N+1 queries
+    cluster_ids_needed = {p.cluster_id for p in threat_posts if p.cluster_id}
+    cluster_cache = {}
+    for cid in cluster_ids_needed:
+        cluster_cache[cid] = await cluster_service.get_cluster(cid)
+
     # Convert to legacy format
     posts = []
     for post in threat_posts:
-        # Get cluster info to determine cluster_type
-        cluster = None
-        if post.cluster_id:
-            cluster = await cluster_service.get_cluster(post.cluster_id)
-        
+        cluster = cluster_cache.get(post.cluster_id) if post.cluster_id else None
+
         # Filter by cluster_type if specified
         if cluster_type and cluster and cluster.cluster_type != cluster_type:
             continue
