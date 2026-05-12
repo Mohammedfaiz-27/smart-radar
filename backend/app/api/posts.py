@@ -268,7 +268,7 @@ async def get_posts(
     is_threat: Optional[bool] = None,
     sentiment_label: Optional[str] = Query(None, regex="^(Positive|Negative|Neutral)$", description="Sentiment label"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=500)
+    limit: int = Query(100, ge=1, le=1000)
 ):
     """Get all posts from posts_table - Enhanced for cluster-based filtering"""
 

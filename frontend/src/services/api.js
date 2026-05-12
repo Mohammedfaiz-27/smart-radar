@@ -78,7 +78,7 @@ export const clustersApi = {
 
 
 export const postsApi = {
-  getAll: (params = {}) => api.get('/api/v1/posts', { params: { limit: 5000, ...params } }),
+  getAll: (params = {}) => api.get('/api/v1/posts', { params: { limit: 1000, ...params } }),
   getById: (id) => api.get(`/api/v1/posts/${id}`),
   getThreats: (params = {}) => api.get('/api/v1/posts/threats', { params }),
   markAsResponded: (id) => api.patch(`/api/v1/posts/${id}/respond`)
