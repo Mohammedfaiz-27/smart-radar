@@ -23,6 +23,7 @@ async def connect_to_mongo():
         max_size=10,
         command_timeout=30,
         ssl="require",
+        statement_cache_size=0,  # required for Supabase pooler (PgBouncer/Supavisor)
     )
     logger.info("✅ Connected to Supabase PostgreSQL")
 

@@ -5,11 +5,6 @@ from pydantic import BaseModel, Field, validator
 from typing import Dict, Any, Literal, Optional, List
 from datetime import datetime
 
-    @classmethod
-    def __get_pydantic_json_schema__(cls, field_schema):
-        field_schema.update(type="string")
-        return field_schema
-
 
 class ThreatCampaignBase(BaseModel):
     """Base threat campaign model"""
@@ -44,13 +39,8 @@ class ThreatCampaignCreate(ThreatCampaignBase):
 
 class ThreatCampaignInDB(ThreatCampaignBase):
     """Threat campaign model stored in database"""
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
+    id: str = Field(default_factory=lambda: str(__import__('uuid').uuid4()))
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 
 class ThreatCampaignResponse(ThreatCampaignBase):

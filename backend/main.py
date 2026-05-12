@@ -57,19 +57,20 @@ websocket_manager = WebSocketManager()
 # Database events
 @app.on_event("startup")
 async def startup_db_client():
-    logger.info("🔌 Connecting to MongoDB")
-    await connect_to_mongo()
-    logger.info("✅ MongoDB connection established")
+    logger.info("🔌 Connecting to Supabase PostgreSQL")
+    try:
+        await connect_to_mongo()
+        logger.info("✅ Supabase connection established")
+    except Exception as e:
+        logger.error(f"❌ Supabase connection failed: {e}")
+        logger.warning("⚠️  Server starting without database — DB operations will fail until connection is available")
+        return
 
-    # Trigger initial data collection for all clusters
     from app.services.startup_collection import trigger_startup_collection
     try:
-        logger.info("🔄 Starting initial data collection for all clusters...")
         await trigger_startup_collection()
-        logger.info("✅ Initial data collection triggered successfully")
     except Exception as e:
         logger.error(f"❌ Error during startup collection: {e}")
-        # Don't fail startup if collection fails
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
@@ -105,6 +106,31 @@ async def websocket_endpoint(websocket: WebSocket):
 @app.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "smart-radar-api"}
+
+# Database connection check
+@app.get("/health/db")
+async def db_health_check():
+    try:
+        from app.core.database import get_database
+        pool = get_database()
+        async with pool.acquire() as conn:
+            version = await conn.fetchval("SELECT version()")
+            clusters = await conn.fetchval("SELECT COUNT(*) FROM clusters")
+            posts = await conn.fetchval("SELECT COUNT(*) FROM posts_table")
+        return {
+            "status": "connected",
+            "database": "Supabase PostgreSQL",
+            "postgres_version": version.split(" ")[1] if version else "unknown",
+            "tables": {
+                "clusters": clusters,
+                "posts": posts
+            }
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e)
+        }
 
 if __name__ == "__main__":
     uvicorn.run(

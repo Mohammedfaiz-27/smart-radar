@@ -75,14 +75,9 @@ class RawDataUpdate(BaseModel):
 
 class RawDataInDB(RawDataBase):
     """Raw data model as stored in database"""
-    id: str = Field(default_factory=lambda: str(ObjectId()), alias="_id")
+    id: str = Field(default_factory=lambda: str(__import__('uuid').uuid4()))
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
-    
-    class Config:
-        populate_by_name = True
-        arbitrary_types_allowed = True
-        json_encoders = {ObjectId: str}
 
 class RawDataResponse(RawDataBase):
     """Raw data response model for API"""

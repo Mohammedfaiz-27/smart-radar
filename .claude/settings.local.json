@@ -43,7 +43,9 @@
       "Bash(timeout 15 bash:*)",
       "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Asus\\\\Downloads\\\\Samrt radar Final\\\\Samrt radar Final\\\\backend\" | Where-Object { $_.Name -ne \".venv\" } | Format-Table Name, PSIsContainer -AutoSize)",
       "PowerShell(Get-Command *)",
-      "Bash(python -c \"import re; content=open\\('threat_campaigns.py'\\).read\\(\\); content=re.sub\\(r'from bson[^\\\\n]*\\\\n', '', content\\); content=re.sub\\(r'import bson[^\\\\n]*\\\\n', '', content\\); open\\('threat_campaigns.py','w'\\).write\\(content\\)\")"
+      "Bash(python -c \"import re; content=open\\('threat_campaigns.py'\\).read\\(\\); content=re.sub\\(r'from bson[^\\\\n]*\\\\n', '', content\\); content=re.sub\\(r'import bson[^\\\\n]*\\\\n', '', content\\); open\\('threat_campaigns.py','w'\\).write\\(content\\)\")",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)"
     ],
     "deny": [],
     "ask": []

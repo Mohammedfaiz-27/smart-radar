@@ -48,22 +48,12 @@ class NewsArticleInDB(NewsArticleBase):
     
     class Config:
         populate_by_name = True
-        json_encoders = {
-            ObjectId: str,
-            datetime: lambda v: v.isoformat()
-        }
 
 
 class NewsArticleResponse(NewsArticleBase):
     """Schema for news article responses - v19.0 Entity-Centric"""
     id: str = Field(..., description="Article ID")
     collected_at: datetime = Field(..., description="Collection timestamp")
-    
-    class Config:
-        json_encoders = {
-            ObjectId: str,
-            datetime: lambda v: v.isoformat()
-        }
 
 
 class NewsArticleUpdate(BaseModel):
