@@ -57,3 +57,16 @@ networkx>=3.2.1
 plotly>=5.17.0
 kaleido>=0.2.1
 json-repair>=0.49.0
+
+# Missing from original requirements.txt
+feedparser>=6.0.11
+APScheduler>=3.10.4
+psycopg2-binary>=2.9.10
+boto3>=1.34.0
+google-search-results>=2.4.2
+serpapi>=0.1.5
+rich>=14.1.0
+langdetect>=1.0.9
+google-genai>=1.41.0
+langchain-google-genai>=2.1.12
+email-validator>=2.2.0
