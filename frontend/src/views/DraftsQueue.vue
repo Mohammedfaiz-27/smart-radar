@@ -5,12 +5,14 @@
         <h2 class="text-2xl font-bold text-gray-900">Drafts & Approvals</h2>
         <p class="text-sm text-gray-500 mt-1">Review and approve posts before publishing</p>
       </div>
-      <button @click="loadDrafts" class="text-sm text-gray-600 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
-        <svg class="w-4 h-4" :class="loading && 'animate-spin'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-        </svg>
-        <span>Refresh</span>
-      </button>
+      <div class="flex items-center space-x-3">
+        <button @click="loadDrafts" class="text-sm text-gray-600 border border-gray-200 px-4 py-2 rounded-lg hover:bg-gray-50 flex items-center space-x-2">
+          <svg class="w-4 h-4" :class="loading && 'animate-spin'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          <span>Refresh</span>
+        </button>
+      </div>
     </div>
 
     <!-- Stats -->
@@ -56,7 +58,7 @@
               </span>
               <span class="text-xs text-gray-400">{{ formatDate(draft.created_at) }}</span>
             </div>
-            <p class="text-sm font-medium text-gray-900 truncate">{{ draft.title || 'Untitled Draft' }}</p>
+            <p class="text-sm font-medium text-gray-900 truncate">{{ draft.final_headline || draft.generated_headline || 'Untitled Draft' }}</p>
           </div>
           <div class="flex items-center space-x-2 ml-4 flex-shrink-0">
             <button
@@ -83,17 +85,19 @@
         </div>
 
         <div class="bg-gray-50 rounded-lg p-3 mb-3">
-          <p class="text-sm text-gray-700 line-clamp-3">{{ draft.content?.text || draft.content || '—' }}</p>
+          <p class="text-sm text-gray-700 line-clamp-3">{{ draft.final_content || draft.generated_content || '—' }}</p>
         </div>
 
-        <div v-if="draft.channels?.length" class="flex items-center space-x-2">
-          <span class="text-xs text-gray-500">Platforms:</span>
-          <span v-for="ch in draft.channels" :key="ch.platform" class="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-700">
-            {{ getPlatformIcon(ch.platform) }} {{ ch.platform }}
+        <div v-if="draft.social_accounts" class="flex items-center space-x-2">
+          <span class="text-xs text-gray-500">Account:</span>
+          <span class="text-xs px-2 py-0.5 bg-gray-100 rounded text-gray-700">
+            {{ getPlatformIcon(draft.social_accounts?.platform) }}
+            {{ draft.social_accounts?.account_name || draft.social_accounts?.platform || '' }}
           </span>
         </div>
       </div>
     </div>
+
   </div>
 
   <!-- Reject modal -->
@@ -121,7 +125,8 @@ import { ref, onMounted } from 'vue'
 import { useSmartPostStore } from '@/stores/smartpost'
 import { smartPostApi } from '@/services/smartpost'
 
-const smartPostStore = useSmartPostStore()
+const store = useSmartPostStore()
+const smartPostStore = store
 const loading = ref(false)
 const actionLoading = ref(null)
 const pending = ref([])
@@ -136,7 +141,7 @@ async function loadDrafts() {
   loading.value = true
   try {
     const res = await smartPostApi.getPendingDrafts()
-    pending.value = res.data || []
+    pending.value = res.data?.items ?? res.data ?? []
     smartPostStore.pendingDrafts = pending.value
   } catch {
     pending.value = []
@@ -183,6 +188,8 @@ async function confirmReject() {
     smartPostStore.pendingDrafts = pending.value
     rejectedCount.value++
     rejectModal.value.open = false
+  } catch {
+    // keep modal open if rejection fails
   } finally {
     actionLoading.value = null
   }

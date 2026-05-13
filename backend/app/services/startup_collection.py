@@ -57,7 +57,7 @@ async def _collect_all_clusters():
             logger.info(f"   Platforms: X, Facebook, YouTube, Google News")
             task = orchestrator.collect_and_process_cluster(
                 cluster_id=cluster.id,
-                save_to_social_posts=True,  # Save to both collections for compatibility
+                save_to_social_posts=False,
                 save_to_posts_table=True
             )
             tasks.append(task)

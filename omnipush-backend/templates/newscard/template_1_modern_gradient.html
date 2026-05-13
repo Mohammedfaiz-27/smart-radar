@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    @font-face {
+      font-family: "TAMIL-UNI013";
+      src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Grotesk";
+      src: url("https://techoffee-public-1.s3.us-east-1.amazonaws.com/newsit/Grotesk-Medium.ttf") format("truetype");
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body.lang-ta {
+      font-family: "TAMIL-UNI013", sans-serif;
+    }
+
+    body.lang-en {
+      font-family: "Grotesk", sans-serif;
+      font-weight: bold;
+    }
+
+    .container {
+      position: relative;
+      text-align: center;
+      color: white;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+    }
+
+    .inner-container {
+      position: relative;
+      text-align: center;
+      color: white;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: start;
+      flex-direction: column;
+    }
+
+    .heading-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 25px 40px;
+      background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+    }
+
+    .footer-row {
+      width: 100%;
+      height: 80px;
+      display: flex;
+      align-items: end;
+      justify-content: stretch;
+      margin-top: auto;
+      padding: 0 clamp(20px, 4vw, 40px) 20px;
+    }
+
+    .inner-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0 clamp(20px, 4vw, 40px);
+    }
+
+    .inner-footer-row>div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      border-radius: 25px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: clamp(14px, 2vw, 18px);
+      font-family: sans-serif;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .news {
+      color: white;
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 8px 20px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      font-family: sans-serif;
+      font-weight: bold;
+      backdrop-filter: blur(5px);
+    }
+
+    .centered {
+      color: white;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: clamp(20px, 4vw, 40px) clamp(25px, 5vw, 50px);
+      flex-grow: 1;
+      flex-direction: column;
+    }
+
+    .headline-wrap {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .centered span {
+      /* max-width: 100%;
+      max-height: 100%; */
+      font-size: clamp(24px, 8vw, 85px);
+      line-height: 1.2;
+      word-wrap: break-word;
+      margin-bottom: 12px;
+      font-weight: bold;
+    }
+
+    /* Placeholder styling */
+    .placeholder {
+      background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+      background-size: 200% 100%;
+      animation: loading 1.5s infinite;
+    }
+
+    @keyframes loading {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+  </style>
+  <title>{{channel_name}} - News</title>
+</head>
+
+<body class="lang-ta">
+  <div class="container">
+    <div class="inner-container">
+      <div class="heading-row">
+        <div class="news">{{category}}</div>
+      </div>
+      <div class="centered">
+        <div class="headline-wrap">
+          <span>{{content}}</span>
+        </div>
+      </div>
+      <div class="footer-row">
+        <div class="inner-footer-row">
+          <div>
+            <div class="pill">{{source}}</div>
+            <div class="pill date">
+              <div>{{date}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".centered span");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+
+</html>

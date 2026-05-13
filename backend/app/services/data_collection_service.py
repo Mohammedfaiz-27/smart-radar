@@ -175,7 +175,7 @@ class DataCollectionService:
         
         return post_ids
     
-    async def _collect_facebook_posts(self, cluster_id: str, keywords: List[str], cluster_type: str) -> List[str]:
+    async def _collect_facebook_posts(self, cluster_id: str, keywords: List[str], cluster_type: str, all_clusters: List[Dict]) -> List[str]:
         """Collect posts from Facebook using RapidAPI with pagination"""
         post_ids = []
         
@@ -235,7 +235,7 @@ class DataCollectionService:
                                     print(f"  Timestamp: {post.get('timestamp')}")
                                     
                                     # Create post data
-                                    post_data = await self._create_post_from_facebook(post, cluster_id, cluster_type)
+                                    post_data = await self._create_post_from_facebook(post, cluster_id, cluster_type, all_clusters)
                                     print(f"  Created post data successfully")
                                     
                                     # Save post with intelligence analysis
@@ -268,7 +268,7 @@ class DataCollectionService:
         
         return post_ids
     
-    async def _collect_youtube_posts(self, cluster_id: str, keywords: List[str], cluster_type: str) -> List[str]:
+    async def _collect_youtube_posts(self, cluster_id: str, keywords: List[str], cluster_type: str, all_clusters: List[Dict]) -> List[str]:
         """Collect posts from YouTube Data API v3"""
         post_ids = []
         
@@ -314,7 +314,7 @@ class DataCollectionService:
                                     
                                     for video in detailed_videos:
                                         # Create post data
-                                        post_data = await self._create_post_from_youtube(video, cluster_id, cluster_type)
+                                        post_data = await self._create_post_from_youtube(video, cluster_id, cluster_type, all_clusters)
                                         
                                         # Save post with intelligence analysis
                                         post_response = await self.post_service.create_post(post_data)
@@ -373,22 +373,23 @@ class DataCollectionService:
             perspective_type = "single"
         
         # Perform appropriate intelligence analysis
-        if len(matched_clusters) > 1:
-            # Multi-perspective analysis
+        if len(matched_clusters) > 0:
             intelligence = await self.intelligence_service.analyze_multi_perspective_content(
                 content,
-                "social_post",
-                matched_clusters
+                matched_clusters,
+                platform="X",
+                engagement_metrics=engagement_metrics
             )
         else:
-            # Single perspective analysis (existing logic)
-            intelligence = await self.intelligence_service.analyze_post(
-                content, 
-                engagement_metrics
-            )
+            raw = await self.intelligence_service.analyze_post(content, engagement_metrics)
+            intelligence = {
+                "relational_summary": f"Sentiment: {raw.get('sentiment_label', 'Neutral')} ({raw.get('sentiment_score', 0.0):.2f})",
+                "entity_sentiments": {},
+                "threat_level": raw.get("threat_level", "low")
+            }
         
         return SocialPostCreate(
-            platform="x",
+            platform="X",
             author=author,
             content=content,
             post_url=f"https://x.com/{author}/status/{legacy.get('id_str', '')}",
@@ -411,7 +412,7 @@ class DataCollectionService:
             perspective_type=perspective_type
         )
     
-    async def _create_post_from_facebook(self, post: Dict[str, Any], cluster_id: str, cluster_type: str) -> SocialPostCreate:
+    async def _create_post_from_facebook(self, post: Dict[str, Any], cluster_id: str, cluster_type: str, all_clusters: List[Dict] = None) -> SocialPostCreate:
         """Convert Facebook RapidAPI response to SocialPostCreate"""
         
         # Extract engagement metrics from RapidAPI format - ensure no None values
@@ -435,12 +436,23 @@ class DataCollectionService:
         # Get content text - ensure not None
         content = post.get("message", post.get("text", "")) or "No content available"
         
-        # Get intelligence analysis
-        intelligence = await self.intelligence_service.analyze_post(
-            content, 
-            engagement_metrics
-        )
-        
+        # Get intelligence analysis in IntelligenceV19 format
+        if all_clusters:
+            matched = await self.intelligence_service.detect_matched_clusters(content, all_clusters)
+        else:
+            matched = []
+        if matched:
+            intelligence = await self.intelligence_service.analyze_multi_perspective_content(
+                content, matched, platform="Facebook", engagement_metrics=engagement_metrics
+            )
+        else:
+            raw = await self.intelligence_service.analyze_post(content, engagement_metrics)
+            intelligence = {
+                "relational_summary": f"Sentiment: {raw.get('sentiment_label', 'Neutral')} ({raw.get('sentiment_score', 0.0):.2f})",
+                "entity_sentiments": {},
+                "threat_level": raw.get("threat_level", "low")
+            }
+
         # Parse timestamp from Facebook post
         timestamp = post.get("timestamp", 0)
         if timestamp:
@@ -449,7 +461,7 @@ class DataCollectionService:
             posted_at = datetime.utcnow()
         
         return SocialPostCreate(
-            platform="facebook",
+            platform="Facebook",
             cluster_id=cluster_id,
             cluster_type=cluster_type,
             author=author,
@@ -460,7 +472,7 @@ class DataCollectionService:
             intelligence=intelligence
         )
     
-    async def _create_post_from_youtube(self, video: Dict[str, Any], cluster_id: str, cluster_type: str) -> SocialPostCreate:
+    async def _create_post_from_youtube(self, video: Dict[str, Any], cluster_id: str, cluster_type: str, all_clusters: List[Dict] = None) -> SocialPostCreate:
         """Convert YouTube API response to SocialPostCreate"""
         
         # Extract engagement metrics
@@ -492,14 +504,25 @@ class DataCollectionService:
         else:
             posted_at = datetime.utcnow()
         
-        # Get intelligence analysis
-        intelligence = await self.intelligence_service.analyze_post(
-            content, 
-            engagement_metrics
-        )
-        
+        # Get intelligence analysis in IntelligenceV19 format
+        if all_clusters:
+            matched = await self.intelligence_service.detect_matched_clusters(content, all_clusters)
+        else:
+            matched = []
+        if matched:
+            intelligence = await self.intelligence_service.analyze_multi_perspective_content(
+                content, matched, platform="YouTube", engagement_metrics=engagement_metrics
+            )
+        else:
+            raw = await self.intelligence_service.analyze_post(content, engagement_metrics)
+            intelligence = {
+                "relational_summary": f"Sentiment: {raw.get('sentiment_label', 'Neutral')} ({raw.get('sentiment_score', 0.0):.2f})",
+                "entity_sentiments": {},
+                "threat_level": raw.get("threat_level", "low")
+            }
+
         return SocialPostCreate(
-            platform="youtube",
+            platform="YouTube",
             cluster_id=cluster_id,
             cluster_type=cluster_type,
             author=author,

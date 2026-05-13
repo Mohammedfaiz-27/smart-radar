@@ -5,6 +5,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Query
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from bson import ObjectId
 
 from app.core.database import get_database
 from app.services.threat_clustering_service import ThreatClusteringService
@@ -260,15 +261,13 @@ async def generate_campaign_report_endpoint(campaign_id: str, background_tasks: 
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
         
-        # Generate report (this could be done in background for large campaigns)
-        report_result = await generate_campaign_report.delay(campaign_id)
-        
-        if report_result["status"] == "error":
-            raise HTTPException(status_code=500, detail=report_result["error"])
-        
+        # Submit report generation as a background Celery task and return immediately.
+        # .delay() returns a non-awaitable AsyncResult, so we fire-and-forget here.
+        generate_campaign_report.delay(campaign_id)
+
         return CampaignReportResponse(
             campaign_id=campaign_id,
-            report=report_result["report"],
+            report={"status": "processing", "message": "Report generation started"},
             generated_at=datetime.utcnow()
         )
         
@@ -282,8 +281,8 @@ async def generate_campaign_report_endpoint(campaign_id: str, background_tasks: 
 async def trigger_campaign_detection(background_tasks: BackgroundTasks):
     """Manually trigger threat campaign detection"""
     try:
-        # Run detection in background
-        background_tasks.add_task(detect_threat_campaigns.delay)
+        # Submit Celery task — .delay() schedules it on the broker directly
+        detect_threat_campaigns.delay()
         
         return {
             "message": "Threat campaign detection triggered",
@@ -308,8 +307,8 @@ async def trigger_metrics_update(campaign_id: str, background_tasks: BackgroundT
         if not campaign:
             raise HTTPException(status_code=404, detail="Campaign not found")
         
-        # Update metrics in background
-        background_tasks.add_task(update_campaign_metrics.delay, campaign_id)
+        # Submit Celery task — .delay() schedules it on the broker directly
+        update_campaign_metrics.delay(campaign_id)
         
         return {
             "message": f"Metrics update triggered for campaign {campaign_id}",

@@ -274,17 +274,25 @@ class PipelineOrchestrator:
                 return error_result
 
         # Execute all platform collections IN PARALLEL
+        # Fresh instances per run — prevents shared aiohttp session corruption
+        # when multiple clusters are collected in parallel from startup_collection.
         print("\n🚀 Starting PARALLEL collection from all platforms...")
+        fresh_collectors = {
+            "x": XCollector(),
+            "facebook": FacebookCollector(),
+            "youtube": YouTubeCollector(),
+            "google_news": GoogleNewsCollector(),
+        }
         platform_tasks = [
             collect_platform(platform_name, collector)
-            for platform_name, collector in self.collectors.items()
+            for platform_name, collector in fresh_collectors.items()
         ]
 
         # Wait for all platforms to complete
         platform_results = await asyncio.gather(*platform_tasks, return_exceptions=True)
 
         # Process results
-        for platform_name, platform_result in zip(self.collectors.keys(), platform_results):
+        for platform_name, platform_result in zip(fresh_collectors.keys(), platform_results):
             if isinstance(platform_result, Exception):
                 print(f"⚠️ {platform_name} failed with exception: {platform_result}")
                 results["errors"].append(f"{platform_name}: {str(platform_result)}")
@@ -406,7 +414,7 @@ class PipelineOrchestrator:
 
                 result = await self.collect_and_process_cluster(
                     cluster_id=cluster.id,
-                    save_to_social_posts=True,
+                    save_to_social_posts=False,
                     save_to_posts_table=True
                 )
 

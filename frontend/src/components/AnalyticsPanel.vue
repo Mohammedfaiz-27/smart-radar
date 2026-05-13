@@ -33,7 +33,7 @@
           class="flex items-start space-x-3 p-3 bg-blue-50 rounded-xl"
         >
           <span class="text-blue-600 mt-0.5">💡</span>
-          <p class="text-sm text-blue-800">{{ insight.text || insight }}</p>
+          <p class="text-sm text-blue-800">{{ insight.recommendation || insight.text || insight }}</p>
         </li>
       </ul>
     </div>
@@ -88,26 +88,35 @@ const getPlatformIcon = (id) => platformIcons[id?.toLowerCase()] || '📣'
 
 const summaryMetrics = computed(() => {
   const d = dashboardData.value
-  if (!d) return [
+  // Backend returns { overview: { total_posts, total_reach, total_engagement, avg_engagement_rate }, ... }
+  const overview = d?.overview ?? d ?? null
+  if (!overview) return [
     { label: 'Total Posts', value: '—' },
     { label: 'Total Reach', value: '—' },
     { label: 'Avg Engagement', value: '—' },
-    { label: 'Scheduled', value: '—' },
+    { label: 'Total Engagement', value: '—' },
   ]
   return [
-    { label: 'Total Posts', value: d.total_posts ?? '—', change: d.posts_change, positive: (d.posts_change || '').startsWith('+') },
-    { label: 'Total Reach', value: formatNumber(d.total_reach) },
-    { label: 'Avg Engagement', value: d.avg_engagement_rate ? (d.avg_engagement_rate * 100).toFixed(1) + '%' : '—' },
-    { label: 'Scheduled', value: d.scheduled_posts ?? '—' },
+    { label: 'Total Posts', value: overview.total_posts ?? '—' },
+    { label: 'Total Reach', value: formatNumber(overview.total_reach) },
+    {
+      label: 'Avg Engagement',
+      value: overview.avg_engagement_rate != null
+        ? overview.avg_engagement_rate.toFixed(1) + '%'
+        : '—'
+    },
+    { label: 'Total Engagement', value: formatNumber(overview.total_engagement) },
   ]
 })
 
 const platformStats = computed(() => {
   const d = dashboardData.value
-  if (!d?.by_platform) return []
-  const total = Object.values(d.by_platform).reduce((s, v) => s + (v.posts || 0), 0)
-  return Object.entries(d.by_platform).map(([platform, v]) => ({
-    platform,
+  // Backend returns platform_performance as an array of { platform, posts, reach, engagement, engagement_rate }
+  const perfList = d?.platform_performance ?? []
+  if (!perfList.length) return []
+  const total = perfList.reduce((s, v) => s + (v.posts || 0), 0)
+  return perfList.map(v => ({
+    platform: v.platform,
     posts: v.posts || 0,
     engagement_rate: v.engagement_rate,
     percentage: total > 0 ? Math.round(((v.posts || 0) / total) * 100) : 0,
@@ -125,7 +134,8 @@ async function loadDashboard() {
   loadingDashboard.value = true
   try {
     const res = await smartPostApi.getAnalyticsDashboard()
-    dashboardData.value = res.data
+    // Backend returns { overview, platform_performance, top_performing_posts, engagement_trends }
+    dashboardData.value = res.data ?? null
   } catch {
     dashboardData.value = null
   } finally {

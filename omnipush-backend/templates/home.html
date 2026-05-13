@@ -1,0 +1,1669 @@
+{% extends "base.html" %}
+
+{% block title %}Research Hub - OmniPush{% endblock %}
+
+{% block content %}
+<!-- <div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <div class="hero-section">
+                <h1 class="display-4 text-gradient mb-4">
+                    <i class="fas fa-globe-americas me-4"></i>
+                    Research Hub
+                </h1>
+                <p class="lead text-muted mb-4">Discover insights, generate knowledge graphs, and create social media
+                    presence for any city or town</p>
+               
+            </div>
+        </div>
+    </div>
+</div> -->
+
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="search-card card fade-in-delay-1">
+            <div class="card-body p-5">
+                <div class="search-header text-center mb-5">
+                    <div class="search-icon mb-4">
+                        <i class="fas fa-search fa-3x text-primary"></i>
+                    </div>
+                    <h3 class="mb-3 text-white">Start Your City Research</h3>
+                    <p class="text-muted">Enter a city or town name to begin your comprehensive analysis</p>
+                </div>
+
+                <div class="search-form mb-4">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text bg-elevated border-0">
+                            <i class="fas fa-map-marker-alt text-primary"></i>
+                        </span>
+                        <input type="text" class="form-control form-control-lg border-0 bg-elevated" id="cityInput"
+                            placeholder="Enter city name (e.g., Chennai, Mumbai, New York)"
+                            onkeypress="handleEnterKey(event)">
+                        <button class="btn btn-primary btn-lg px-4" onclick="researchCity()">
+                            <i class="fas fa-search me-2"></i>Analyze
+                        </button>
+                    </div>
+                </div>
+
+                <!-- <div class="action-buttons fade-in-delay-2">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <button
+                                class="btn btn-primary btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                                onclick="researchCity()">
+                                <i class="fas fa-search fa-2x mb-2"></i>
+                                <span class="fw-bold">City Research</span>
+                                <small class="text-light opacity-75">Deep Analysis</small>
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button
+                                class="btn btn-success btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                                onclick="generateGraph()">
+                                <i class="fas fa-project-diagram fa-2x mb-2"></i>
+                                <span class="fw-bold">Knowledge Graph</span>
+                                <small class="text-light opacity-75">Visual Map</small>
+                            </button>
+                        </div>
+                        <div class="col-md-4">
+                            <button
+                                class="btn btn-warning btn-lg w-100 h-100 d-flex flex-column align-items-center justify-content-center"
+                                onclick="generateHandles()">
+                                <i class="fas fa-hashtag fa-2x mb-2"></i>
+                                <span class="fw-bold">Social Handles</span>
+                                <small class="text-light opacity-75">Find Accounts</small>
+                            </button>
+                        </div>
+                    </div>
+                </div> -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Results Section -->
+<div class="results-section">
+    <div id="resultsContainer"></div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentCity = '';
+    let cityData = {};
+
+    // Normalize Plotly layout to avoid deprecated keys (e.g., titlefont, titlefont_size)
+    function sanitizePlotlyLayout(inputLayout) {
+        try {
+            const layout = JSON.parse(JSON.stringify(inputLayout || {}));
+
+            // Ensure title object shape
+            if (typeof layout.title === 'string') {
+                layout.title = { text: layout.title };
+            } else if (!layout.title) {
+                layout.title = {};
+            }
+
+            // Migrate deprecated top-level titlefont to title.font
+            if (layout.titlefont && typeof layout.titlefont === 'object') {
+                layout.title.font = Object.assign({}, layout.title.font || {}, layout.titlefont);
+                delete layout.titlefont;
+            }
+
+            // Handle flattened legacy key titlefont_size if present
+            if (Object.prototype.hasOwnProperty.call(layout, 'titlefont_size')) {
+                const size = layout.titlefont_size;
+                if (typeof size === 'number') {
+                    layout.title.font = Object.assign({}, layout.title.font || {}, { size });
+                }
+                delete layout.titlefont_size;
+            }
+
+            return layout;
+        } catch (e) {
+            return inputLayout || {};
+        }
+    }
+
+    // Load city data from localStorage
+    function loadCityData(city) {
+        const stored = localStorage.getItem(`cityData_${city}`);
+        return stored ? JSON.parse(stored) : {};
+    }
+
+    // Save city data to localStorage
+    function saveCityData(city, data) {
+        localStorage.setItem(`cityData_${city}`, JSON.stringify(data));
+        // Also save the most recent city and timestamp
+        localStorage.setItem('mostRecentCity', city);
+        localStorage.setItem('mostRecentCityTimestamp', Date.now().toString());
+    }
+
+    // Get the most recent city from localStorage
+    function getMostRecentCity() {
+        const recentCity = localStorage.getItem('mostRecentCity');
+        const timestamp = localStorage.getItem('mostRecentCityTimestamp');
+
+        if (recentCity && timestamp) {
+            // Check if the data is less than 24 hours old
+            const now = Date.now();
+            const dataAge = now - parseInt(timestamp);
+            const twentyFourHours = 24 * 60 * 60 * 1000;
+
+            if (dataAge < twentyFourHours) {
+                return recentCity;
+            }
+        }
+
+        return null;
+    }
+
+    // Load most recent city data automatically
+    function autoLoadRecentCity() {
+        const recentCity = getMostRecentCity();
+        if (recentCity) {
+            const storedData = loadCityData(recentCity);
+            if (storedData && Object.keys(storedData).length > 0) {
+                // Set current city and data
+                currentCity = recentCity;
+                cityData = storedData;
+
+                // Update the input field
+                document.getElementById('cityInput').value = recentCity;
+
+                // Initialize results container
+                initializeResultsContainer(recentCity);
+
+                // Load available data
+                if (cityData.research) {
+                    displayResearchResults(cityData.research);
+                }
+
+                // Show cache indicator and timestamp
+                const cacheIndicator = document.getElementById('cacheIndicator');
+                const lastUpdated = document.getElementById('lastUpdated');
+                if (cacheIndicator) {
+                    cacheIndicator.style.display = 'inline-block';
+                }
+                if (lastUpdated) {
+                    const timestamp = localStorage.getItem('mostRecentCityTimestamp');
+                    if (timestamp) {
+                        const date = new Date(parseInt(timestamp));
+                        lastUpdated.textContent = `Last updated: ${date.toLocaleString()}`;
+                        lastUpdated.style.display = 'inline-block';
+                    }
+                }
+
+                // Show notification
+                showSuccess(`📍 Restored previous session for ${recentCity}`);
+
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Initialize results container with tabs
+    function initializeResultsContainer(city) {
+        const container = document.getElementById('resultsContainer');
+        container.innerHTML = `
+            <div class="row mt-5">
+                <div class="col-12">
+                    <div class="card fade-in-delay-3">
+                        <div class="card-header">
+                            <div class="d-flex align-items-center justify-content-between">
+                                <div class="d-flex align-items-center">
+                                    <i class="fas fa-city fa-lg me-3 text-primary"></i>
+                                    <h5 class="mb-0">Results for ${city}</h5>
+                                    <span class="badge bg-info ms-2" id="cacheIndicator" style="display: none;">
+                                        <i class="fas fa-history me-1"></i>Cached
+                                    </span>
+                                    <small class="text-muted ms-2" id="lastUpdated" style="display: none;"></small>
+                                </div>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearCityData()" title="Clear all cached data">
+                                    <i class="fas fa-trash me-2"></i>Clear Cache
+                                </button>
+                            </div>
+                            <ul class="nav nav-tabs mt-3" id="resultsTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="research-tab" data-bs-toggle="tab" data-bs-target="#research" type="button" role="tab" onclick="loadTabContent('research')">
+                                        <i class="fas fa-search me-2"></i>Research
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="graph-tab" data-bs-toggle="tab" data-bs-target="#graph" type="button" role="tab" onclick="loadTabContent('graph')">
+                                        <i class="fas fa-project-diagram me-2"></i>Knowledge Graph
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="handles-tab" data-bs-toggle="tab" data-bs-target="#handles" type="button" role="tab" onclick="loadTabContent('handles')">
+                                        <i class="fas fa-hashtag me-2"></i>Social Handles
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="posts-tab" data-bs-toggle="tab" data-bs-target="#posts" type="button" role="tab" onclick="loadTabContent('posts')">
+                                        <i class="fas fa-share-alt me-2"></i>Social Posts
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="live-news-tab" data-bs-toggle="tab" data-bs-target="#live-news" type="button" role="tab" onclick="loadTabContent('live-news')">
+                                        <i class="fas fa-rss me-2"></i>Live News
+                                    </button>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content" id="resultsTabContent">
+                                <div class="tab-pane fade show active" id="research" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6 class="mb-0">Research Analysis</h6>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-outline-secondary btn-sm" onclick="regenerateResearch()" id="regenerateResearchBtn">
+                                                <i class="fas fa-redo me-2"></i>Regenerate
+                                            </button>
+                                            <button class="btn btn-primary btn-sm" onclick="generateSocialPosts()" id="generatePostsBtn">
+                                                <i class="fas fa-magic me-2"></i>Generate Posts
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="researchContent">Loading research data...</div>
+                                </div>
+                                <div class="tab-pane fade" id="graph" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3" id="graphHeader" style="display: none !important;">
+                                        <h6 class="mb-0">Knowledge Graph</h6>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="regenerateGraph()" id="regenerateGraphBtn">
+                                            <i class="fas fa-redo me-2"></i>Regenerate
+                                        </button>
+                                    </div>
+                                    <div id="graphContent">
+                                        <div class="text-center py-4" id="graphGenerateBtn">
+                                            <button class="btn btn-success" onclick="generateGraph()">
+                                                <i class="fas fa-project-diagram me-2"></i>Generate Knowledge Graph
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="handles" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3" id="handlesHeader" style="display: none !important;">
+                                        <h6 class="mb-0">Social Media Handles</h6>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="regenerateHandles()" id="regenerateHandlesBtn">
+                                            <i class="fas fa-redo me-2"></i>Regenerate
+                                        </button>
+                                    </div>
+                                    <div id="handlesContent">
+                                        <div class="text-center py-4" id="handlesGenerateBtn">
+                                            <button class="btn btn-warning" onclick="generateHandles()">
+                                                <i class="fas fa-hashtag me-2"></i>Generate Social Handles
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="posts" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3" id="postsHeader" style="display: none !important;">
+                                        <h6 class="mb-0">Social Media Posts</h6>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="regeneratePosts()" id="regeneratePostsBtn">
+                                            <i class="fas fa-redo me-2"></i>Regenerate
+                                        </button>
+                                    </div>
+                                    <div id="postsContent">
+                                        <div class="text-center py-4 text-muted" id="postsPlaceholder">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            Generate posts from the Research tab first
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="live-news" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3" id="liveNewsHeader" style="display: none !important;">
+                                        <h6 class="mb-0">Live News</h6>
+                                        <button class="btn btn-outline-secondary btn-sm" onclick="refreshLiveNews()" id="refreshLiveNewsBtn">
+                                            <i class="fas fa-sync me-2"></i>Refresh
+                                        </button>
+                                    </div>
+                                    <div id="liveNewsContent">
+                                        <div class="text-center py-4" id="liveNewsGenerateBtn">
+                                            <button class="btn btn-info" onclick="getLiveNews()">
+                                                <i class="fas fa-rss me-2"></i>Get Live News
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    async function researchCity() {
+        const city = document.getElementById('cityInput').value;
+        if (!city) {
+            showError('Please enter a city name');
+            return;
+        }
+
+        currentCity = city;
+        cityData = loadCityData(city);
+
+        // Initialize the results container
+        initializeResultsContainer(city);
+
+        // If we have cached research data, display it
+        if (cityData.research) {
+            displayResearchResults(cityData.research);
+            // Show cache indicator and timestamp
+            const cacheIndicator = document.getElementById('cacheIndicator');
+            const lastUpdated = document.getElementById('lastUpdated');
+            if (cacheIndicator) {
+                cacheIndicator.style.display = 'inline-block';
+            }
+            if (lastUpdated) {
+                const timestamp = localStorage.getItem('mostRecentCityTimestamp');
+                if (timestamp) {
+                    const date = new Date(parseInt(timestamp));
+                    lastUpdated.textContent = `Last updated: ${date.toLocaleString()}`;
+                    lastUpdated.style.display = 'inline-block';
+                }
+            }
+            showSuccess('Research data loaded from cache!');
+            return;
+        }
+
+        // Hide cache indicator and timestamp for fresh data
+        const cacheIndicator = document.getElementById('cacheIndicator');
+        const lastUpdated = document.getElementById('lastUpdated');
+        if (cacheIndicator) {
+            cacheIndicator.style.display = 'none';
+        }
+        if (lastUpdated) {
+            lastUpdated.style.display = 'none';
+        }
+
+        showLoading('Researching city...', 'Gathering comprehensive data about ' + city);
+        try {
+            const response = await fetch('/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(city)}`
+            });
+
+            const data = await response.json();
+            cityData.research = data;
+            saveCityData(city, cityData);
+            displayResearchResults(data);
+            showSuccess('Research completed successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to fetch research data. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function generateGraph() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Check if we have cached graph data
+        if (cityData.graph) {
+            displayGraph(cityData.graph);
+            showSuccess('Knowledge graph loaded from cache!');
+            return;
+        }
+
+        showLoading('Generating knowledge graph...', 'Creating visual connections for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-graph', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            if (data && data.layout) {
+                data.layout = sanitizePlotlyLayout(data.layout);
+            }
+            cityData.graph = data;
+            saveCityData(currentCity, cityData);
+            displayGraph(data);
+            showSuccess('Knowledge graph generated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to generate knowledge graph. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function generateHandles() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Check if we have cached handles data
+        if (cityData.handles) {
+            displayHandles(cityData.handles);
+            showSuccess('Social media handles loaded from cache!');
+            return;
+        }
+
+        showLoading('Generating social handles...', 'Creating relevant social media handles for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-handles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            cityData.handles = data;
+            saveCityData(currentCity, cityData);
+            displayHandles(data);
+            showSuccess('Social media handles generated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to generate social media handles. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function generateSocialPosts() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Check if we have cached posts data
+        if (cityData.posts) {
+            displaySocialPosts(cityData.posts);
+            document.getElementById('generatePostsBtn').innerHTML = '<i class="fas fa-check me-2"></i>Posts Generated';
+            document.getElementById('generatePostsBtn').disabled = true;
+            showSuccess('Social media posts loaded from cache!');
+            return;
+        }
+
+        showLoading('Generating social posts...', 'Creating engaging social media content for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-social-posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            cityData.posts = data;
+            saveCityData(currentCity, cityData);
+            displaySocialPosts(data);
+
+            // Update button state
+            document.getElementById('generatePostsBtn').innerHTML = '<i class="fas fa-check me-2"></i>Posts Generated';
+            document.getElementById('generatePostsBtn').disabled = true;
+
+            showSuccess('Social media posts generated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to generate social media posts. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function displayResearchResults(data) {
+        const container = document.getElementById('researchContent');
+        const openaiHtml = DOMPurify.sanitize(marked.parse(data.openai_analysis || ''));
+        const perplexityHtml = DOMPurify.sanitize(marked.parse(data.perplexity_research || ''));
+
+        container.innerHTML = `
+            <div class="row g-4">
+                <div class="col-md-6">
+                    <div class="result-section">
+                        <div class="result-header mb-3">
+                            <i class="fas fa-robot me-2 text-success"></i>
+                            <h6 class="mb-0">Basic Analysis</h6>
+                        </div>
+                        <div class="result-content p-3 bg-elevated rounded">
+                            <div class="text-white" id="openaiMarkdown">${openaiHtml}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="result-section">
+                        <div class="result-header mb-3">
+                            <i class="fas fa-search me-2 text-info"></i>
+                            <h6 class="mb-0">Deep Agent Research</h6>
+                        </div>
+                        <div class="result-content p-3 bg-elevated rounded">
+                            <div class="text-white" id="perplexityMarkdown">${perplexityHtml}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Check if posts were already generated for this city
+        if (cityData.posts) {
+            document.getElementById('generatePostsBtn').innerHTML = '<i class="fas fa-check me-2"></i>Posts Generated';
+            document.getElementById('generatePostsBtn').disabled = true;
+        }
+    }
+
+    function displayGraph(data) {
+        // Show regenerate header and hide generate button
+        const graphHeader = document.getElementById('graphHeader');
+        const graphGenerateBtn = document.getElementById('graphGenerateBtn');
+        if (graphHeader) graphHeader.style.display = 'flex';
+        if (graphGenerateBtn) graphGenerateBtn.style.display = 'none';
+
+        const container = document.getElementById('graphContent');
+        container.innerHTML = `
+            <div class="graph-container">
+                <div id="knowledgeGraph" style="width: 100%; height: 600px;"></div>
+            </div>
+        `;
+
+        // Prefer D3 interactive graph if graph_data exists
+        if (data.graph_data && data.graph_data.nodes && data.graph_data.edges) {
+            renderD3Graph('knowledgeGraph', data.graph_data);
+        } else if (data.traces && data.layout) {
+            // Fallback to existing Plotly rendering if only traces/layout are present
+            const safeLayout = sanitizePlotlyLayout(data.layout);
+            Plotly.newPlot('knowledgeGraph', data.traces, safeLayout, { responsive: true });
+        } else {
+            document.getElementById('knowledgeGraph').innerHTML = '<div class="text-muted">No graph data available.</div>';
+        }
+    }
+
+    function renderD3Graph(containerId, graphData) {
+        const container = document.getElementById(containerId);
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+
+        // Clear previous content
+        container.innerHTML = '';
+
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .style('border-radius', '12px');
+
+        const zoomGroup = svg.append('g');
+
+        const zoom = d3.zoom()
+            .scaleExtent([0.2, 5])
+            .on('zoom', (event) => {
+                zoomGroup.attr('transform', event.transform);
+            });
+        svg.call(zoom);
+
+        // Build color scale by node type
+        const types = Array.from(new Set((graphData.nodes || []).map(n => n.type || 'default')));
+        const palette = d3.schemeTableau10 || d3.schemeCategory10;
+        const color = d3.scaleOrdinal(palette).domain(types);
+
+        // Tooltip (ensure only one instance)
+        d3.selectAll('body > div.d3-tooltip').remove();
+        const tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'd3-tooltip')
+            .style('position', 'fixed')
+            .style('pointer-events', 'none')
+            .style('z-index', 10000)
+            .style('padding', '8px 10px')
+            .style('background', 'rgba(0,0,0,0.85)')
+            .style('color', '#fff')
+            .style('border-radius', '8px')
+            .style('font-size', '12px')
+            .style('opacity', 0);
+
+        // Legend
+        const legend = svg.append('g').attr('transform', `translate(${width - 160}, 16)`);
+        types.forEach((t, i) => {
+            const g = legend.append('g').attr('transform', `translate(0, ${i * 20})`);
+            g.append('rect').attr('width', 12).attr('height', 12).attr('rx', 3).attr('fill', color(t));
+            g.append('text').attr('x', 18).attr('y', 10).attr('fill', '#ddd').attr('font-size', 12).text(t);
+        });
+
+        // Prepare simulation
+        const nodes = (graphData.nodes || []).map(n => ({ ...n }));
+        const links = (graphData.edges || []).map(e => ({ source: e.source, target: e.target, ...e }));
+
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(d => 60 + (100 - Math.min(80, (d.size || 20))))
+                .strength(0.15))
+            .force('charge', d3.forceManyBody().strength(-220))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(d => (d.size || 12) + 8));
+
+        // Draw links with gradients
+        const defs = svg.append('defs');
+        links.forEach((link, i) => {
+            const grad = defs.append('linearGradient').attr('id', `grad-${i}`);
+            const srcId = (typeof link.source === 'object' && link.source !== null) ? link.source.id : link.source;
+            const tgtId = (typeof link.target === 'object' && link.target !== null) ? link.target.id : link.target;
+            const srcType = (nodes.find(n => n.id === srcId)?.type) || 'default';
+            const tgtType = (nodes.find(n => n.id === tgtId)?.type) || 'default';
+            grad.append('stop').attr('offset', '0%').attr('stop-color', color(srcType));
+            grad.append('stop').attr('offset', '100%').attr('stop-color', color(tgtType));
+        });
+
+        const link = zoomGroup.append('g')
+            .attr('stroke-linecap', 'round')
+            .selectAll('path')
+            .data(links)
+            .join('path')
+            .attr('stroke', (d, i) => `url(#grad-${i})`)
+            .attr('stroke-width', 2)
+            .attr('opacity', 0.7);
+
+        // Link labels
+        const linkLabels = zoomGroup.append('g')
+            .selectAll('text')
+            .data(links)
+            .join('text')
+            .attr('fill', '#aaa')
+            .attr('font-size', 11)
+            .attr('text-anchor', 'middle')
+            .text(d => d.relationship || '');
+
+        // Node groups
+        const nodeGroup = zoomGroup.append('g')
+            .selectAll('g')
+            .data(nodes)
+            .join('g')
+            .attr('cursor', 'pointer')
+            .call(d3.drag()
+                .on('start', (event, d) => {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x; d.fy = d.y;
+                })
+                .on('drag', (event, d) => { d.fx = event.x; d.fy = event.y; })
+                .on('end', (event, d) => { if (!event.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }));
+
+        nodeGroup.append('circle')
+            .attr('r', d => Math.max(10, d.size || 14))
+            .attr('fill', d => color(d.type || 'default'))
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2)
+            .attr('filter', 'url(#shadow)');
+
+        // Node labels
+        nodeGroup.append('text')
+            .attr('x', 0)
+            .attr('y', d => -Math.max(12, (d.size || 14)) - 4)
+            .attr('text-anchor', 'middle')
+            .attr('fill', '#e5e7eb')
+            .attr('font-weight', 600)
+            .attr('font-size', 12)
+            .text(d => d.label || d.id);
+
+        // Hover effects and tooltips
+        nodeGroup
+            .on('mouseenter', (event, d) => {
+                tooltip.style('opacity', 1)
+                    .html(`<strong>${d.label || d.id}</strong><br/>${d.description || ''}`);
+                // Neighbor highlighting
+                const neighborIds = new Set([d.id]);
+                links.forEach(l => {
+                    const s = (typeof l.source === 'object') ? l.source.id : l.source;
+                    const t = (typeof l.target === 'object') ? l.target.id : l.target;
+                    if (s === d.id) neighborIds.add(t);
+                    if (t === d.id) neighborIds.add(s);
+                });
+                nodeGroup.selectAll('circle').attr('opacity', n => neighborIds.has(n.id) ? 1 : 0.15);
+                link.attr('opacity', l => {
+                    const s = (typeof l.source === 'object') ? l.source.id : l.source;
+                    const t = (typeof l.target === 'object') ? l.target.id : l.target;
+                    return (s === d.id || t === d.id) ? 0.9 : 0.1;
+                });
+                linkLabels.attr('opacity', l => {
+                    const s = (typeof l.source === 'object') ? l.source.id : l.source;
+                    const t = (typeof l.target === 'object') ? l.target.id : l.target;
+                    return (s === d.id || t === d.id) ? 1 : 0;
+                });
+            })
+            .on('mouseleave', () => {
+                tooltip.style('opacity', 0);
+                nodeGroup.selectAll('circle').attr('opacity', 1);
+                link.attr('opacity', 0.7);
+                linkLabels.attr('opacity', 1);
+            })
+            .on('mousemove', (event) => {
+                tooltip.style('left', `${event.clientX + 12}px`).style('top', `${event.clientY + 12}px`);
+            })
+            .on('click', (event, d) => {
+                showSuccess(`Node: ${d.label || d.id}`);
+            });
+
+        simulation.on('tick', () => {
+            link.attr('d', d => `M${d.source.x},${d.source.y} L${d.target.x},${d.target.y}`);
+            linkLabels.attr('x', d => (d.source.x + d.target.x) / 2)
+                .attr('y', d => (d.source.y + d.target.y) / 2 - 4);
+            nodeGroup.attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+        // Resize handling
+        const resizeObserver = new ResizeObserver(() => {
+            const w = container.clientWidth;
+            const h = container.clientHeight;
+            svg.attr('width', w).attr('height', h);
+            simulation.force('center', d3.forceCenter(w / 2, h / 2)).alpha(0.2).restart();
+        });
+        resizeObserver.observe(container);
+
+        // Drop shadow filter
+        const filter = defs.append('filter').attr('id', 'shadow').attr('height', '130%');
+        filter.append('feDropShadow').attr('dx', 0).attr('dy', 2).attr('stdDeviation', 2).attr('flood-color', '#000').attr('flood-opacity', 0.35);
+    }
+
+    function displayHandles(data) {
+        // Show regenerate header and hide generate button
+        const handlesHeader = document.getElementById('handlesHeader');
+        const handlesGenerateBtn = document.getElementById('handlesGenerateBtn');
+        if (handlesHeader) handlesHeader.style.display = 'flex';
+        if (handlesGenerateBtn) handlesGenerateBtn.style.display = 'none';
+
+        const container = document.getElementById('handlesContent');
+        let html = '<div class="row g-4">';
+
+        // Facebook Pages
+        if (data.facebook_pages && data.facebook_pages.length > 0) {
+            html += '<div class="col-md-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-facebook fa-lg me-2 text-primary"></i>';
+            html += '<h6 class="mb-0 text-white">Facebook Pages</h6>';
+            html += '</div>';
+            html += '<div class="handles-grid">';
+            data.facebook_pages.forEach((page, index) => {
+                html += `<span class="badge bg-primary me-2 mb-2">${page}</span>`;
+            });
+            html += '</div></div></div>';
+        }
+
+        // Instagram Pages
+        if (data.instagram_pages && data.instagram_pages.length > 0) {
+            html += '<div class="col-md-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-instagram fa-lg me-2 text-danger"></i>';
+            html += '<h6 class="mb-0 text-white">Instagram Pages</h6>';
+            html += '</div>';
+            html += '<div class="handles-grid">';
+            data.instagram_pages.forEach((page, index) => {
+                html += `<span class="badge bg-primary me-2 mb-2">${page}</span>`;
+            });
+            html += '</div></div></div>';
+        }
+
+        // Twitter Accounts
+        if (data.twitter_accounts && data.twitter_accounts.length > 0) {
+            html += '<div class="col-md-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-twitter fa-lg me-2 text-info"></i>';
+            html += '<h6 class="mb-0 text-white">Twitter Accounts</h6>';
+            html += '</div>';
+            html += '<div class="handles-grid">';
+            data.twitter_accounts.forEach((account, index) => {
+                html += `<span class="badge bg-primary me-2 mb-2">${account}</span>`;
+            });
+            html += '</div></div></div>';
+        }
+
+        // WhatsApp Group
+        if (data.whatsapp_group) {
+            html += '<div class="col-md-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-whatsapp fa-lg me-2 text-success"></i>';
+            html += '<h6 class="mb-0 text-white">WhatsApp Group</h6>';
+            html += '</div>';
+            html += '<div class="handles-grid">';
+            html += `<span class="badge bg-primary me-2 mb-2">${data.whatsapp_group}</span>`;
+            html += '</div></div></div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function displaySocialPosts(data) {
+        // Show regenerate header and hide placeholder
+        const postsHeader = document.getElementById('postsHeader');
+        const postsPlaceholder = document.getElementById('postsPlaceholder');
+        if (postsHeader) postsHeader.style.display = 'flex';
+        if (postsPlaceholder) postsPlaceholder.style.display = 'none';
+
+        const container = document.getElementById('postsContent');
+        let html = '<div class="row g-4">';
+
+        // Instagram Posts
+        if (data.instagram_posts && data.instagram_posts.length > 0) {
+            html += '<div class="col-lg-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-instagram fa-lg me-2 text-danger"></i>';
+            html += '<h6 class="mb-0">Instagram Posts</h6>';
+            html += '</div>';
+            data.instagram_posts.forEach((post, index) => {
+                html += `<div class="post-item mb-3 p-3 bg-elevated rounded">`;
+                html += `<div class="post-content mb-2">${post.caption}</div>`;
+                if (post.hashtags && post.hashtags.length > 0) {
+                    html += `<div class="post-hashtags">`;
+                    post.hashtags.forEach(tag => {
+                        html += `<span class="badge bg-danger me-1">${tag}</span>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `<div class="d-flex justify-content-between align-items-center mt-2">`;
+                html += `<small class="text-muted">Type: ${post.type}</small>`;
+                html += `<button class="btn btn-sm btn-primary post-btn" data-content="${post.caption.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}">`;
+                html += `<i class="fas fa-arrow-right me-1"></i>Post</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Facebook Posts
+        if (data.facebook_posts && data.facebook_posts.length > 0) {
+            html += '<div class="col-lg-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-facebook fa-lg me-2 text-primary"></i>';
+            html += '<h6 class="mb-0">Facebook Posts</h6>';
+            html += '</div>';
+            data.facebook_posts.forEach((post, index) => {
+                html += `<div class="post-item mb-3 p-3 bg-elevated rounded">`;
+                html += `<div class="post-content mb-2">${post.content}</div>`;
+                html += `<div class="d-flex justify-content-between align-items-center mt-2">`;
+                html += `<small class="text-muted">CTA: ${post.call_to_action}</small>`;
+                html += `<button class="btn btn-sm btn-primary post-btn" data-content="${post.content.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}">`;
+                html += `<i class="fas fa-arrow-right me-1"></i>Post</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Twitter Posts
+        if (data.twitter_posts && data.twitter_posts.length > 0) {
+            html += '<div class="col-lg-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-twitter fa-lg me-2 text-info"></i>';
+            html += '<h6 class="mb-0">Twitter Posts</h6>';
+            html += '</div>';
+            data.twitter_posts.forEach((post, index) => {
+                html += `<div class="post-item mb-3 p-3 bg-elevated rounded">`;
+                html += `<div class="post-content mb-2">${post.content}</div>`;
+                if (post.hashtags && post.hashtags.length > 0) {
+                    html += `<div class="post-hashtags">`;
+                    post.hashtags.forEach(tag => {
+                        html += `<span class="badge bg-info me-1">${tag}</span>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `<div class="d-flex justify-content-end mt-2">`;
+                html += `<button class="btn btn-sm btn-primary post-btn" data-content="${post.content.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}">`;
+                html += `<i class="fas fa-arrow-right me-1"></i>Post</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // LinkedIn Posts
+        if (data.linkedin_posts && data.linkedin_posts.length > 0) {
+            html += '<div class="col-lg-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-linkedin fa-lg me-2 text-primary"></i>';
+            html += '<h6 class="mb-0">LinkedIn Posts</h6>';
+            html += '</div>';
+            data.linkedin_posts.forEach((post, index) => {
+                html += `<div class="post-item mb-3 p-3 bg-elevated rounded">`;
+                html += `<div class="post-content mb-2">${post.content}</div>`;
+                html += `<div class="d-flex justify-content-between align-items-center mt-2">`;
+                html += `<small class="text-muted">Tone: ${post.tone}</small>`;
+                html += `<button class="btn btn-sm btn-primary post-btn" data-content="${post.content.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}">`;
+                html += `<i class="fas fa-arrow-right me-1"></i>Post</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    function loadTabContent(tabName) {
+        if (!currentCity || !cityData) return;
+
+        switch (tabName) {
+            case 'graph':
+                if (cityData.graph) {
+                    displayGraph(cityData.graph);
+                } else {
+                    // Reset to initial state
+                    const graphHeader = document.getElementById('graphHeader');
+                    const graphGenerateBtn = document.getElementById('graphGenerateBtn');
+                    if (graphHeader) graphHeader.style.display = 'none';
+                    if (graphGenerateBtn) graphGenerateBtn.style.display = 'block';
+                }
+                break;
+            case 'handles':
+                if (cityData.handles) {
+                    displayHandles(cityData.handles);
+                } else {
+                    // Reset to initial state
+                    const handlesHeader = document.getElementById('handlesHeader');
+                    const handlesGenerateBtn = document.getElementById('handlesGenerateBtn');
+                    if (handlesHeader) handlesHeader.style.display = 'none';
+                    if (handlesGenerateBtn) handlesGenerateBtn.style.display = 'block';
+                }
+                break;
+            case 'posts':
+                if (cityData.posts) {
+                    displaySocialPosts(cityData.posts);
+                } else {
+                    // Reset to initial state
+                    const postsHeader = document.getElementById('postsHeader');
+                    const postsPlaceholder = document.getElementById('postsPlaceholder');
+                    if (postsHeader) postsHeader.style.display = 'none';
+                    if (postsPlaceholder) postsPlaceholder.style.display = 'block';
+                }
+                break;
+            case 'live-news':
+                if (cityData.liveNews) {
+                    displayLiveNews(cityData.liveNews);
+                } else {
+                    // Reset to initial state
+                    const liveNewsHeader = document.getElementById('liveNewsHeader');
+                    const liveNewsGenerateBtn = document.getElementById('liveNewsGenerateBtn');
+                    if (liveNewsHeader) liveNewsHeader.style.display = 'none';
+                    if (liveNewsGenerateBtn) liveNewsGenerateBtn.style.display = 'block';
+                }
+                break;
+        }
+    }
+
+    // Clear cache function
+    function clearCityData() {
+        if (!currentCity) {
+            showError('No city data to clear');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to clear all cached data for ${currentCity}?`)) {
+            localStorage.removeItem(`cityData_${currentCity}`);
+            cityData = {};
+
+            // Reset the UI
+            document.getElementById('resultsContainer').innerHTML = '';
+            showSuccess(`Cleared all cached data for ${currentCity}`);
+        }
+    }
+
+    // Regeneration functions
+    async function regenerateResearch() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Clear research data from cache
+        delete cityData.research;
+        // Also clear dependent data
+        delete cityData.posts;
+        delete cityData.liveNews;
+        saveCityData(currentCity, cityData);
+
+        // Reset posts UI if visible
+        const postsHeader = document.getElementById('postsHeader');
+        const postsPlaceholder = document.getElementById('postsPlaceholder');
+        if (postsHeader) postsHeader.style.display = 'none';
+        if (postsPlaceholder) postsPlaceholder.style.display = 'block';
+
+        // Regenerate research
+        showLoading('Regenerating research...', 'Fetching fresh data for ' + currentCity);
+        try {
+            const response = await fetch('/research', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}`
+            });
+
+            const data = await response.json();
+            cityData.research = data;
+            saveCityData(currentCity, cityData);
+            displayResearchResults(data);
+            showSuccess('Research regenerated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to regenerate research data. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function regenerateGraph() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Clear graph data from cache
+        delete cityData.graph;
+        saveCityData(currentCity, cityData);
+
+        // Reset UI to generate state
+        const graphHeader = document.getElementById('graphHeader');
+        const graphGenerateBtn = document.getElementById('graphGenerateBtn');
+        if (graphHeader) graphHeader.style.display = 'none';
+        if (graphGenerateBtn) graphGenerateBtn.style.display = 'block';
+
+        showLoading('Regenerating knowledge graph...', 'Creating new visual connections for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-graph', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            if (data && data.layout) {
+                data.layout = sanitizePlotlyLayout(data.layout);
+            }
+            cityData.graph = data;
+            saveCityData(currentCity, cityData);
+            displayGraph(data);
+            showSuccess('Knowledge graph regenerated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to regenerate knowledge graph. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function regenerateHandles() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Clear handles data from cache
+        delete cityData.handles;
+        saveCityData(currentCity, cityData);
+
+        // Reset UI to generate state
+        const handlesHeader = document.getElementById('handlesHeader');
+        const handlesGenerateBtn = document.getElementById('handlesGenerateBtn');
+        if (handlesHeader) handlesHeader.style.display = 'none';
+        if (handlesGenerateBtn) handlesGenerateBtn.style.display = 'block';
+
+        showLoading('Regenerating social handles...', 'Creating new social media handles for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-handles', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            cityData.handles = data;
+            saveCityData(currentCity, cityData);
+            displayHandles(data);
+            showSuccess('Social media handles regenerated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to regenerate social media handles. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function regeneratePosts() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Clear posts data from cache
+        delete cityData.posts;
+        saveCityData(currentCity, cityData);
+
+        // Reset UI to initial state
+        const postsHeader = document.getElementById('postsHeader');
+        const postsPlaceholder = document.getElementById('postsPlaceholder');
+        if (postsHeader) postsHeader.style.display = 'none';
+        if (postsPlaceholder) postsPlaceholder.style.display = 'block';
+
+        // Reset research tab button
+        const generatePostsBtn = document.getElementById('generatePostsBtn');
+        if (generatePostsBtn) {
+            generatePostsBtn.innerHTML = '<i class="fas fa-magic me-2"></i>Generate Posts';
+            generatePostsBtn.disabled = false;
+        }
+
+        showLoading('Regenerating social posts...', 'Creating new social media content for ' + currentCity);
+        try {
+            const openaiAnalysis = cityData.research?.openai_analysis || '';
+            const perplexityResearch = cityData.research?.perplexity_research || '';
+
+            const response = await fetch('/generate-social-posts', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: `city=${encodeURIComponent(currentCity)}&openai_analysis=${encodeURIComponent(openaiAnalysis)}&perplexity_research=${encodeURIComponent(perplexityResearch)}`
+            });
+
+            const data = await response.json();
+            cityData.posts = data;
+            saveCityData(currentCity, cityData);
+            displaySocialPosts(data);
+
+            // Update research tab button if available
+            const generatePostsBtn = document.getElementById('generatePostsBtn');
+            if (generatePostsBtn) {
+                generatePostsBtn.innerHTML = '<i class="fas fa-check me-2"></i>Posts Generated';
+                generatePostsBtn.disabled = true;
+            }
+
+            showSuccess('Social media posts regenerated successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to regenerate social media posts. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    function handleEnterKey(event) {
+        if (event.key === 'Enter') {
+            researchCity();
+        }
+    }
+
+    function loadPostContent(content) {
+        // Store the content in localStorage to pass to the post page
+        localStorage.setItem('postContent', content);
+        // Navigate to the post page
+        window.location.href = '/post';
+    }
+
+    // Live News Functions
+    async function getLiveNews() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Check if we have cached live news data
+        if (cityData.liveNews) {
+            displayLiveNews(cityData.liveNews);
+            showSuccess('Live news loaded from cache!');
+            return;
+        }
+
+        showLoading('Getting live news...', 'Scraping social media for ' + currentCity);
+        try {
+            const response = await fetch(`/get-live-news?city=${encodeURIComponent(currentCity)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+
+            const data = await response.json();
+            cityData.liveNews = data;
+            saveCityData(currentCity, cityData);
+            displayLiveNews(data);
+            showSuccess('Live news retrieved successfully!');
+        } catch (error) {
+            console.error('Error:', error);
+            showError('Failed to get live news. Please try again.');
+        } finally {
+            hideLoading();
+        }
+    }
+
+    async function refreshLiveNews() {
+        if (!currentCity) {
+            showError('Please search for a city first');
+            return;
+        }
+
+        // Clear live news data from cache
+        delete cityData.liveNews;
+        saveCityData(currentCity, cityData);
+
+        // Reset UI to generate state
+        const liveNewsHeader = document.getElementById('liveNewsHeader');
+        const liveNewsGenerateBtn = document.getElementById('liveNewsGenerateBtn');
+        if (liveNewsHeader) liveNewsHeader.style.display = 'none';
+        if (liveNewsGenerateBtn) liveNewsGenerateBtn.style.display = 'block';
+
+        await getLiveNews();
+    }
+
+    function displayLiveNews(data) {
+        // Show refresh header and hide generate button
+        const liveNewsHeader = document.getElementById('liveNewsHeader');
+        const liveNewsGenerateBtn = document.getElementById('liveNewsGenerateBtn');
+        if (liveNewsHeader) liveNewsHeader.style.display = 'flex';
+        if (liveNewsGenerateBtn) liveNewsGenerateBtn.style.display = 'none';
+
+        const container = document.getElementById('liveNewsContent');
+        let html = '<div class="row g-4">';
+
+        // Facebook Posts
+        if (data.facebook_posts && data.facebook_posts.results && data.facebook_posts.results.length > 0) {
+            html += '<div class="col-lg-6">';
+            html += '<div class="platform-section">';
+            html += '<div class="platform-header mb-3">';
+            html += '<i class="fab fa-facebook fa-lg me-2 text-primary"></i>';
+            html += '<h6 class="mb-0">Facebook Live News</h6>';
+            html += '</div>';
+            data.facebook_posts.results.slice(0, 5).forEach((post, index) => {
+                const message = post.message || 'No message';
+                const author = post.author ? post.author.name : 'Unknown';
+                const reactions = post.reactions_count || 0;
+                const comments = post.comments_count || 0;
+                const imageUrl = post.image ? post.image.uri : null;
+                const videoThumbnail = post.video_thumbnail || null;
+
+                html += `<div class="live-news-item mb-3 p-3 bg-elevated rounded">`;
+                if (imageUrl || videoThumbnail) {
+                    html += `<div class="news-media mb-2">`;
+                    html += `<img src="${imageUrl || videoThumbnail}" alt="Post media" class="img-fluid rounded" style="max-height: 200px; object-fit: cover;">`;
+                    html += `</div>`;
+                }
+                html += `<div class="news-content mb-2">${message.substring(0, 200)}${message.length > 200 ? '...' : ''}</div>`;
+                html += `<div class="news-meta d-flex justify-content-between align-items-center mb-2">`;
+                html += `<small class="text-muted">By: ${author}</small>`;
+                html += `<div class="reactions">`;
+                html += `<small class="text-muted me-2"><i class="fas fa-thumbs-up"></i> ${reactions}</small>`;
+                html += `<small class="text-muted"><i class="fas fa-comment"></i> ${comments}</small>`;
+                html += `</div>`;
+                html += `</div>`;
+                html += `<div class="d-flex justify-content-end">`;
+                html += `<button class="btn btn-sm btn-primary live-news-post-btn" data-content="${message.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}" data-source="Facebook - ${author}">`;
+                html += `<i class="fas fa-arrow-right me-1"></i>Post to Social</button>`;
+                html += `</div>`;
+                html += `</div>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Twitter Posts
+        if (data.twitter_posts && data.twitter_posts.result && data.twitter_posts.result.timeline &&
+            data.twitter_posts.result.timeline.instructions && data.twitter_posts.result.timeline.instructions.length > 0) {
+            const entries = data.twitter_posts.result.timeline.instructions[0].entries || [];
+            const tweetEntries = entries.filter(entry => entry.entryId.startsWith('tweet-'));
+
+            if (tweetEntries.length > 0) {
+                html += '<div class="col-lg-6">';
+                html += '<div class="platform-section">';
+                html += '<div class="platform-header mb-3">';
+                html += '<i class="fab fa-twitter fa-lg me-2 text-info"></i>';
+                html += '<h6 class="mb-0">Twitter Live News</h6>';
+                html += '</div>';
+
+                tweetEntries.slice(0, 5).forEach((entry, index) => {
+                    const tweet = entry.content?.itemContent?.tweet_results?.result;
+                    if (tweet && tweet.legacy) {
+                        const fullText = tweet.legacy.full_text || 'No content';
+                        const author = tweet.core?.user_results?.result?.legacy?.name || 'Unknown';
+                        const screenName = tweet.core?.user_results?.result?.legacy?.screen_name || '';
+                        const favorites = tweet.legacy.favorite_count || 0;
+                        const retweets = tweet.legacy.retweet_count || 0;
+
+                        html += `<div class="live-news-item mb-3 p-3 bg-elevated rounded">`;
+                        html += `<div class="news-content mb-2">${fullText.substring(0, 200)}${fullText.length > 200 ? '...' : ''}</div>`;
+                        html += `<div class="news-meta d-flex justify-content-between align-items-center mb-2">`;
+                        html += `<small class="text-muted">By: ${author} ${screenName ? '@' + screenName : ''}</small>`;
+                        html += `<div class="reactions">`;
+                        html += `<small class="text-muted me-2"><i class="fas fa-heart"></i> ${favorites}</small>`;
+                        html += `<small class="text-muted"><i class="fas fa-retweet"></i> ${retweets}</small>`;
+                        html += `</div>`;
+                        html += `</div>`;
+                        html += `<div class="d-flex justify-content-end">`;
+                        html += `<button class="btn btn-sm btn-primary live-news-post-btn" data-content="${fullText.replace(/"/g, '&quot;').replace(/'/g, '&#x27;')}" data-source="Twitter - ${author}">`;
+                        html += `<i class="fas fa-arrow-right me-1"></i>Post to Social</button>`;
+                        html += `</div>`;
+                        html += `</div>`;
+                    }
+                });
+                html += '</div></div>';
+            }
+        }
+
+        if (!data.facebook_posts?.results?.length && !data.twitter_posts?.result?.timeline?.instructions?.length) {
+            html += '<div class="col-12">';
+            html += '<div class="text-center text-muted py-4">';
+            html += '<i class="fas fa-exclamation-circle fa-2x mb-3"></i>';
+            html += '<p>No live news found for this city. Try a different search term.</p>';
+            html += '</div>';
+            html += '</div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }
+
+    // Add event delegation for post buttons and auto-load recent city
+    document.addEventListener('DOMContentLoaded', function () {
+        // Auto-load the most recent city data
+        setTimeout(() => {
+            autoLoadRecentCity();
+        }, 500); // Small delay to ensure UI is ready
+
+        // Event delegation for post buttons
+        document.addEventListener('click', function (e) {
+            if (e.target.closest('.post-btn') || e.target.closest('.live-news-post-btn')) {
+                const button = e.target.closest('.post-btn') || e.target.closest('.live-news-post-btn');
+                const content = button.getAttribute('data-content');
+                const source = button.getAttribute('data-source');
+                if (content) {
+                    // Add source attribution if available
+                    const finalContent = source ? `${content}\n\n📰 Source: ${source}` : content;
+                    loadPostContent(finalContent);
+                }
+            }
+        });
+    });
+</script>
+
+<style>
+    .hero-section {
+        padding: 2rem 0;
+    }
+
+    .hero-stats {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        margin: 2rem 0;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: var(--bg-elevated);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-color);
+        min-width: 120px;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .search-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .search-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+
+    .search-icon {
+        width: 80px;
+        height: 80px;
+        background: var(--gradient-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto;
+        color: white;
+    }
+
+    .search-form .input-group {
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        overflow: hidden;
+        backdrop-filter: blur(20px);
+    }
+
+    .search-form .form-control {
+        border: none;
+        background: var(--bg-elevated);
+        color: var(--text-primary);
+        font-size: 1.125rem;
+    }
+
+    .search-form .form-control:focus {
+        box-shadow: none;
+        background: var(--bg-elevated);
+    }
+
+    .search-form .input-group-text {
+        background: var(--bg-elevated);
+        border: none;
+        color: var(--accent-primary);
+        font-size: 1.25rem;
+    }
+
+    .form-text {
+        color: var(--text-muted);
+        font-size: 0.875rem;
+    }
+
+    .action-buttons .btn {
+        padding: 1.75rem 1rem;
+        border-radius: 16px;
+        transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        min-height: 140px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    .action-buttons .btn:hover {
+        transform: translateY(-6px) scale(1.02);
+        box-shadow: 0 16px 48px rgba(0, 0, 0, 0.25);
+    }
+
+
+    .result-section {
+        height: 100%;
+    }
+
+    .result-header {
+        display: flex;
+        align-items: center;
+        padding-bottom: 0.5rem;
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .result-content {
+        background: var(--bg-elevated);
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        backdrop-filter: blur(10px);
+    }
+
+    .platform-section {
+        background: var(--bg-elevated);
+        padding: 1.5rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        height: 100%;
+        backdrop-filter: blur(10px);
+    }
+
+    .platform-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+    }
+
+    .handles-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .bg-elevated {
+        background: var(--bg-elevated) !important;
+    }
+
+    /* Tab styles */
+    .nav-tabs {
+        border-bottom: 2px solid var(--border-color);
+    }
+
+    .nav-tabs .nav-link {
+        color: var(--text-muted);
+        border: 1px solid transparent;
+        border-bottom: 2px solid transparent;
+        padding: 0.75rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: var(--text-primary);
+        border-color: var(--border-color);
+        background-color: var(--bg-elevated);
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--accent-primary);
+        background-color: var(--bg-elevated);
+        border-color: var(--border-color);
+        border-bottom-color: var(--accent-primary);
+        font-weight: 600;
+    }
+
+    .tab-content {
+        padding-top: 1.5rem;
+    }
+
+    /* Post styles */
+    .post-item {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .post-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .post-content {
+        color: var(--text-primary);
+        line-height: 1.5;
+        word-wrap: break-word;
+    }
+
+    .post-hashtags {
+        margin-top: 0.5rem;
+    }
+
+    .post-hashtags .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+
+    /* Live News styles */
+    .live-news-item {
+        background: var(--bg-elevated);
+        border: 1px solid var(--border-color);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .live-news-item:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+
+    .news-content {
+        color: var(--text-primary);
+        line-height: 1.5;
+        word-wrap: break-word;
+        font-size: 0.9rem;
+    }
+
+    .news-meta {
+        border-top: 1px solid var(--border-color);
+        padding-top: 0.5rem;
+    }
+
+    .news-media img {
+        border-radius: 8px;
+        width: 100%;
+        height: auto;
+    }
+
+    .reactions small {
+        font-size: 0.75rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero-stats {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            min-width: auto;
+        }
+
+        .action-buttons .btn {
+            min-height: 120px;
+        }
+
+        .nav-tabs .nav-link {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+    }
+</style>
+{% endblock %}

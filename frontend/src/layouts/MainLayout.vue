@@ -1,125 +1,99 @@
 <template>
-  <div class="min-h-screen bg-gray-50">
-    <!-- Header -->
-    <header class="bg-white shadow-sm">
-      <div class="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-        <!-- Main Header Row -->
-        <div class="flex justify-between items-center py-6">
-          <!-- Left Section: Logo and Status Indicators -->
-          <div class="flex flex-col space-y-4">
-            <!-- Smart Radar Logo with Status Toggle -->
-            <div class="flex items-center space-x-4">
-              <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg">
-                <svg class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h1 class="text-4xl font-black text-gray-900 tracking-tight">SMART RADAR</h1>
+  <div class="min-h-screen bg-gray-50 flex">
 
-              <!-- Status Toggle integrated with logo -->
-              <div class="relative bg-green-500 hover:bg-green-600 transition-all duration-300 rounded-full px-4 py-2 shadow-lg animate-pulse ml-6" style="animation-duration: 2s; box-shadow: 0 0 20px rgba(34, 197, 94, 0.4), 0 0 40px rgba(34, 197, 94, 0.2);">
-                <div class="w-4 h-4 bg-white rounded-full relative z-10"></div>
-                <!-- Slow waving effect -->
-                <div class="absolute inset-0 rounded-full bg-green-400 opacity-30 animate-ping" style="animation-duration: 3s;"></div>
-              </div>
-            </div>
+    <!-- ── Left Sidebar ─────────────────────────────────────── -->
+    <aside class="w-56 min-h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-30">
 
-            <!-- Status Indicators with Dots and Text in Left Bottom -->
-            <div class="flex items-center space-x-6 ml-18">
-              <div class="flex items-center space-x-1">
-                <div class="w-2.5 h-2.5 bg-blue-500 rounded-full shadow-lg" style="box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);"></div>
-                <span class="text-xs font-semibold text-gray-700">Digital Command Center</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-2.5 h-2.5 bg-orange-500 rounded-full shadow-lg animate-pulse" style="box-shadow: 0 0 8px rgba(249, 115, 22, 0.6);"></div>
-                <span class="text-xs font-semibold text-gray-700">{{ postsStore.threatPosts.length }} Active Threats</span>
-              </div>
-              <div class="flex items-center space-x-1">
-                <div class="w-2.5 h-2.5 bg-green-500 rounded-full shadow-lg animate-pulse" style="box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);"></div>
-                <span class="text-xs font-semibold text-gray-700">Real-time Intelligence</span>
-              </div>
-            </div>
+      <!-- Brand -->
+      <div class="px-4 py-5 border-b border-gray-100">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow">
+            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
           </div>
-
-
-          <!-- Right Section: System Time and Navigation -->
-          <div class="flex flex-col items-end space-y-4">
-            <!-- System Time -->
-            <div class="text-right">
-              <div class="text-sm text-gray-500 font-medium">System Time</div>
-              <div class="text-xl font-bold text-gray-900">{{ currentTime }}</div>
-              <div class="flex items-center justify-end space-x-2 mt-1">
-                <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse" style="box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);"></div>
-                <span class="text-sm text-green-600 font-semibold">Live Monitoring</span>
-              </div>
-            </div>
-
-            <!-- Navigation Tabs with Icons -->
-            <nav class="flex space-x-6">
-              <router-link
-                to="/"
-                class="flex items-center space-x-2 text-sm font-medium pb-1"
-                :class="$route.path === '/' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z" />
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z" />
-                </svg>
-                <span>Dashboard</span>
-              </router-link>
-              <router-link
-                to="/clusters"
-                class="flex items-center space-x-2 text-sm font-medium pb-1"
-                :class="$route.path.startsWith('/clusters') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                </svg>
-                <span>Clusters</span>
-              </router-link>
-              <router-link
-                to="/narratives"
-                class="flex items-center space-x-2 text-sm font-medium pb-1"
-                :class="$route.path === '/narratives' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <span>Narratives</span>
-              </router-link>
-              <router-link
-                to="/publish"
-                class="flex items-center space-x-2 text-sm font-medium pb-1"
-                :class="$route.path.startsWith('/publish') ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-                <span>Publish</span>
-              </router-link>
-              <router-link
-                to="/drafts"
-                class="flex items-center space-x-2 text-sm font-medium pb-1"
-                :class="$route.path === '/drafts' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
-              >
-                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
-                </svg>
-                <span>Drafts</span>
-                <span v-if="pendingCount > 0" class="ml-1 bg-orange-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">{{ pendingCount }}</span>
-              </router-link>
-            </nav>
+          <div>
+            <div class="text-sm font-black text-gray-900 tracking-tight">SMART RADAR</div>
+            <div class="text-xs text-gray-400 leading-tight">Command Center</div>
           </div>
         </div>
+        <div class="flex items-center space-x-1.5 mt-3">
+          <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+          <span class="text-xs text-green-600 font-semibold">Live</span>
+          <span v-if="postsStore.threatPosts.length > 0" class="ml-auto bg-orange-100 text-orange-700 text-xs rounded-full px-2 py-0.5 font-medium">
+            {{ postsStore.threatPosts.length }} threats
+          </span>
+        </div>
       </div>
-    </header>
 
-    <!-- Main Content - Router View -->
-    <router-view />
+      <!-- Nav -->
+      <nav class="flex-1 px-3 py-4 overflow-y-auto space-y-0.5">
 
-    <!-- Response Panel Modal - Global -->
-    <ResponsePanel />
+        <p class="sidebar-section-label">Intelligence</p>
+        <router-link to="/" class="sidebar-link" :class="$route.path === '/' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          <span>Dashboard</span>
+        </router-link>
+        <router-link to="/clusters" class="sidebar-link" :class="$route.path.startsWith('/clusters') ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+          <span>Clusters</span>
+        </router-link>
+        <router-link to="/narratives" class="sidebar-link" :class="$route.path === '/narratives' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+          <span>Narratives</span>
+        </router-link>
+
+        <p class="sidebar-section-label mt-4">Publishing</p>
+        <router-link to="/publish" class="sidebar-link" :class="$route.path === '/publish' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+          <span>Publish Hub</span>
+        </router-link>
+        <router-link to="/drafts" class="sidebar-link" :class="$route.path === '/drafts' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg>
+          <span class="flex-1">Drafts</span>
+          <span v-if="pendingCount > 0" class="bg-orange-500 text-white text-xs rounded-full min-w-5 h-5 px-1 flex items-center justify-center font-medium">{{ pendingCount }}</span>
+        </router-link>
+        <router-link to="/social-accounts" class="sidebar-link" :class="$route.path === '/social-accounts' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span>Social Accounts</span>
+        </router-link>
+        <router-link to="/templates" class="sidebar-link" :class="$route.path === '/templates' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+          <span>Templates</span>
+        </router-link>
+
+        <p class="sidebar-section-label mt-4">Automation</p>
+        <router-link to="/automation" class="sidebar-link" :class="$route.path === '/automation' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Automation</span>
+        </router-link>
+        <router-link to="/external-news" class="sidebar-link" :class="$route.path === '/external-news' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"/></svg>
+          <span>News Queue</span>
+        </router-link>
+        <router-link to="/scraper" class="sidebar-link" :class="$route.path === '/scraper' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"/></svg>
+          <span>Scraper</span>
+        </router-link>
+
+      </nav>
+
+      <!-- System time at bottom -->
+      <div class="px-4 py-3 border-t border-gray-100">
+        <div class="text-xs text-gray-400">System Time</div>
+        <div class="text-sm font-bold text-gray-800 font-mono tracking-wide">{{ currentTime }}</div>
+      </div>
+    </aside>
+
+    <!-- ── Main content ────────────────────────────────────────── -->
+    <div class="flex-1 ml-56 min-h-screen">
+      <router-view />
+    </div>
+
   </div>
+
+  <!-- Global Response Panel -->
+  <ResponsePanel />
 </template>
 
 <script setup>
@@ -129,72 +103,42 @@ import { useClustersStore } from '@/stores/clusters'
 import { useSmartPostStore } from '@/stores/smartpost'
 import ResponsePanel from '@/components/ResponsePanel.vue'
 
-const postsStore = usePostsStore()
+const postsStore   = usePostsStore()
 const clustersStore = useClustersStore()
 const smartPostStore = useSmartPostStore()
-
 const pendingCount = computed(() => smartPostStore.pendingDrafts.length)
 
-// Use cluster store computed properties
-const ownClusters = computed(() => clustersStore.ownClusters)
-const competitorClusters = computed(() => clustersStore.competitorClusters)
-
-// Current time for header
 const currentTime = ref('')
 let timeInterval = null
-
 const updateTime = () => {
   const now = new Date()
-  currentTime.value = now.toLocaleTimeString('en-US', {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
-// Initialize cluster-based data loading (runs once on app start)
-const initializeAppData = async () => {
-  try {
-    console.log('🚀 Initializing app data...')
-
-    // First load clusters
-    await clustersStore.fetchClusters()
-
-    // Then load posts with cluster filtering
-    await postsStore.fetchPosts()
-
-    console.log('✅ App data initialized')
-    console.log('Own clusters:', ownClusters.value.length)
-    console.log('Competitor clusters:', competitorClusters.value.length)
-    console.log('Total posts loaded:', postsStore.posts.length)
-
-    // Log cluster keywords for debugging
-    ownClusters.value.forEach(cluster => {
-      console.log(`📊 Own cluster "${cluster.name}" keywords:`, cluster.keywords)
-    })
-
-    competitorClusters.value.forEach(cluster => {
-      console.log(`📊 Competitor cluster "${cluster.name}" keywords:`, cluster.keywords)
-    })
-
-  } catch (error) {
-    console.error('❌ Error initializing app data:', error)
-  }
+  currentTime.value = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
 }
 
 onMounted(async () => {
-  // Initialize time and start timer
   updateTime()
   timeInterval = setInterval(updateTime, 1000)
-
-  // Initialize app data once
-  await initializeAppData()
-})
-
-onUnmounted(() => {
-  if (timeInterval) {
-    clearInterval(timeInterval)
+  try {
+    await clustersStore.fetchClusters()
+    await postsStore.fetchPosts()
+  } catch (e) {
+    console.error('App init error:', e)
   }
 })
+onUnmounted(() => { if (timeInterval) clearInterval(timeInterval) })
 </script>
+
+<style scoped>
+.sidebar-link {
+  @apply flex items-center space-x-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all w-full;
+}
+.sidebar-active {
+  @apply bg-blue-50 text-blue-700;
+}
+.sidebar-inactive {
+  @apply text-gray-600 hover:bg-gray-50 hover:text-gray-900;
+}
+.sidebar-section-label {
+  @apply text-xs font-semibold text-gray-400 uppercase tracking-wider px-3 py-1.5;
+}
+</style>

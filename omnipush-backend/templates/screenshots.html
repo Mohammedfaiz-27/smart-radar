@@ -1,0 +1,971 @@
+{% extends "base.html" %}
+
+{% block title %}News Card Gallery - OmniPush{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="text-center mb-5">
+            <div class="hero-section">
+                <h1 class="display-4 text-gradient mb-4">
+                    <i class="fas fa-images me-4"></i>
+                    News Card Gallery
+                </h1>
+                <p class="lead text-muted mb-4">Manage your content previews and news cards</p>
+                <div class="hero-stats d-flex justify-content-center gap-4 mb-4">
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalScreenshots">0</div>
+                        <div class="stat-label">News Cards</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="totalSize">0 MB</div>
+                        <div class="stat-label">Storage</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="recentUploads">0</div>
+                        <div class="stat-label">Recent</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="gallery-card card fade-in-delay-1">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="header-content">
+                    <h5 class="mb-0">
+                        <i class="fas fa-folder-open me-2"></i>
+                        News Card Archive
+                    </h5>
+                    <small class="text-muted">Browse and organize your screenshots</small>
+                </div>
+                <div class="header-actions">
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshScreenshots()">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" onclick="exportGallery()">
+                            <i class="fas fa-download me-1"></i>Export
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="clearAllScreenshots()">
+                            <i class="fas fa-trash me-1"></i>Clear All
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Gallery Filters -->
+                <div class="gallery-filters mb-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="search-filter">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-elevated border-0">
+                                        <i class="fas fa-search text-primary"></i>
+                                    </span>
+                                    <input type="text" class="form-control border-0 bg-elevated" id="searchFilter"
+                                        placeholder="Search screenshots...">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-elevated border-0" id="sortFilter">
+                                <option value="newest">Newest First</option>
+                                <option value="oldest">Oldest First</option>
+                                <option value="name">Name A-Z</option>
+                                <option value="size">Size</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select class="form-select bg-elevated border-0" id="viewFilter">
+                                <option value="grid">Grid View</option>
+                                <option value="list">List View</option>
+                                <option value="masonry">Masonry</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-secondary w-100" onclick="toggleFilters()">
+                                <i class="fas fa-filter me-1"></i>Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gallery Grid -->
+                <div id="screenshotsGrid" class="gallery-grid">
+                    <div class="loading-placeholder text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-3 text-muted">Loading screenshots...</p>
+                    </div>
+                </div>
+
+                <!-- Gallery Stats -->
+                <div class="gallery-stats mt-4 pt-4 border-top border-color">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="stat-item-small">
+                                <i class="fas fa-images text-primary mb-2"></i>
+                                <div class="stat-number-small" id="visibleCount">0</div>
+                                <div class="stat-label-small">Visible</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item-small">
+                                <i class="fas fa-calendar text-success mb-2"></i>
+                                <div class="stat-number-small" id="todayCount">0</div>
+                                <div class="stat-label-small">Today</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item-small">
+                                <i class="fas fa-clock text-warning mb-2"></i>
+                                <div class="stat-number-small" id="weekCount">0</div>
+                                <div class="stat-label-small">This Week</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-item-small">
+                                <i class="fas fa-database text-info mb-2"></i>
+                                <div class="stat-number-small" id="avgSize">0 KB</div>
+                                <div class="stat-label-small">Avg Size</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- News Card Modal -->
+<div class="modal fade" id="screenshotModal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-eye me-2"></i>News Card Preview
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <div class="screenshot-preview-container">
+                    <img id="modalImage" src="" class="img-fluid screenshot-preview" alt="News Card">
+                    <div class="screenshot-info-panel mt-4">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="info-card">
+                                    <h6><i class="fas fa-info-circle me-2"></i>File Information</h6>
+                                    <div class="info-content" id="modalInfo"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="info-card">
+                                    <h6><i class="fas fa-tags me-2"></i>Actions</h6>
+                                    <div class="action-buttons-group">
+                                        <button class="btn btn-primary btn-sm" onclick="downloadScreenshot()">
+                                            <i class="fas fa-download me-1"></i>Download
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm" onclick="shareScreenshot()">
+                                            <i class="fas fa-share me-1"></i>Share
+                                        </button>
+                                        <button class="btn btn-outline-danger btn-sm" onclick="deleteScreenshot()">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Modal -->
+<div class="modal fade" id="bulkActionsModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-tasks me-2"></i>Bulk Actions
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Select screenshots to perform bulk operations:</p>
+                <div class="bulk-actions-list">
+                    <button class="btn btn-outline-primary w-100 mb-2" onclick="bulkDownload()">
+                        <i class="fas fa-download me-2"></i>Download Selected
+                    </button>
+                    <button class="btn btn-outline-success w-100 mb-2" onclick="bulkShare()">
+                        <i class="fas fa-share me-2"></i>Share Selected
+                    </button>
+                    <button class="btn btn-outline-danger w-100" onclick="bulkDelete()">
+                        <i class="fas fa-trash me-2"></i>Delete Selected
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentScreenshot = null;
+    let allScreenshots = [];
+    let selectedScreenshots = new Set();
+    let currentView = 'grid';
+    let currentSort = 'newest';
+
+    // Load screenshots when page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        loadScreenshots();
+        setupEventListeners();
+    });
+
+    function setupEventListeners() {
+        // Search filter
+        document.getElementById('searchFilter').addEventListener('input', function () {
+            filterScreenshots();
+        });
+
+        // Sort filter
+        document.getElementById('sortFilter').addEventListener('change', function () {
+            currentSort = this.value;
+            sortScreenshots();
+        });
+
+        // View filter
+        document.getElementById('viewFilter').addEventListener('change', function () {
+            currentView = this.value;
+            changeView();
+        });
+    }
+
+    async function loadScreenshots() {
+        try {
+            const response = await fetch('/api/screenshots');
+            allScreenshots = await response.json();
+            updateStats();
+            displayScreenshots(allScreenshots);
+        } catch (error) {
+            console.error('Error loading screenshots:', error);
+            showError('Failed to load screenshots');
+            document.getElementById('screenshotsGrid').innerHTML = `
+                <div class="error-placeholder text-center py-5">
+                    <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                    <h5>Error Loading Screenshots</h5>
+                    <p class="text-muted">Unable to load screenshots. Please try again.</p>
+                    <button class="btn btn-primary" onclick="loadScreenshots()">Retry</button>
+                </div>
+            `;
+        }
+    }
+
+    function updateStats() {
+        const total = allScreenshots.length;
+        const today = new Date().toDateString();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toDateString();
+
+        const todayCount = allScreenshots.filter(s => new Date(s.created).toDateString() === today).length;
+        const weekCount = allScreenshots.filter(s => new Date(s.created) >= weekAgo).length;
+
+        // Calculate total size (assuming each screenshot is ~100KB for demo)
+        const totalSize = (total * 100 / 1024).toFixed(1);
+        const avgSize = total > 0 ? (totalSize / total * 1024).toFixed(0) : 0;
+
+        document.getElementById('totalScreenshots').textContent = total;
+        document.getElementById('totalSize').textContent = totalSize + ' MB';
+        document.getElementById('recentUploads').textContent = todayCount;
+        document.getElementById('visibleCount').textContent = total;
+        document.getElementById('todayCount').textContent = todayCount;
+        document.getElementById('weekCount').textContent = weekCount;
+        document.getElementById('avgSize').textContent = avgSize + ' KB';
+    }
+
+    function displayScreenshots(screenshots) {
+        const grid = document.getElementById('screenshotsGrid');
+
+        if (screenshots.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-placeholder text-center py-5">
+                    <i class="fas fa-images fa-3x text-muted mb-3"></i>
+                    <h5>No Screenshots Found</h5>
+                    <p class="text-muted">Generate content screenshots from the <a href="/post">Content Publisher</a> page.</p>
+                    <a href="/post" class="btn btn-primary">
+                        <i class="fas fa-plus me-2"></i>Create Content
+                    </a>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        screenshots.forEach((screenshot, index) => {
+            const date = new Date(screenshot.created).toLocaleDateString();
+            const time = new Date(screenshot.created).toLocaleTimeString();
+            const size = (Math.random() * 200 + 50).toFixed(0); // Mock size for demo
+
+            html += `
+                <div class="gallery-item" data-index="${index}">
+                    <div class="screenshot-card" onclick="showScreenshot('${screenshot.filename}', '${screenshot.path}', '${date} ${time}', ${size})">
+                        <div class="card-img-top-container">
+                            <img src="${screenshot.url}" class="card-img-top screenshot-thumbnail" alt="News Card ${index + 1}">
+                            <div class="screenshot-overlay">
+                                <div class="overlay-content">
+                                    <i class="fas fa-search-plus fa-2x mb-2"></i>
+                                    <span>Click to view</span>
+                                </div>
+                            </div>
+                            <div class="selection-checkbox">
+                                <input type="checkbox" class="form-check-input" 
+                                       onchange="toggleSelection(${index}, this.checked)"
+                                       ${selectedScreenshots.has(index) ? 'checked' : ''}>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="screenshot-info">
+                                <h6 class="screenshot-title">${screenshot.filename}</h6>
+                                <div class="screenshot-meta">
+                                    <span class="meta-item">
+                                        <i class="fas fa-calendar me-1"></i>${date}
+                                    </span>
+                                    <span class="meta-item">
+                                        <i class="fas fa-clock me-1"></i>${time}
+                                    </span>
+                                    <span class="meta-item">
+                                        <i class="fas fa-file-image me-1"></i>${size} KB
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        grid.innerHTML = html;
+        updateSelectionUI();
+    }
+
+    function toggleSelection(index, checked) {
+        if (checked) {
+            selectedScreenshots.add(index);
+        } else {
+            selectedScreenshots.delete(index);
+        }
+        updateSelectionUI();
+    }
+
+    function updateSelectionUI() {
+        const hasSelection = selectedScreenshots.size > 0;
+        const bulkActionsBtn = document.querySelector('.bulk-actions-btn');
+
+        if (hasSelection) {
+            if (!bulkActionsBtn) {
+                const headerActions = document.querySelector('.header-actions');
+                headerActions.innerHTML += `
+                    <button class="btn btn-primary btn-sm ms-2 bulk-actions-btn" onclick="showBulkActions()">
+                        <i class="fas fa-tasks me-1"></i>Bulk Actions (${selectedScreenshots.size})
+                    </button>
+                `;
+            } else {
+                bulkActionsBtn.innerHTML = `<i class="fas fa-tasks me-1"></i>Bulk Actions (${selectedScreenshots.size})`;
+            }
+        } else if (bulkActionsBtn) {
+            bulkActionsBtn.remove();
+        }
+    }
+
+    function filterScreenshots() {
+        const searchTerm = document.getElementById('searchFilter').value.toLowerCase();
+        const filtered = allScreenshots.filter(screenshot =>
+            screenshot.filename.toLowerCase().includes(searchTerm)
+        );
+        displayScreenshots(filtered);
+    }
+
+    function sortScreenshots() {
+        const sorted = [...allScreenshots];
+
+        switch (currentSort) {
+            case 'newest':
+                sorted.sort((a, b) => new Date(b.created) - new Date(a.created));
+                break;
+            case 'oldest':
+                sorted.sort((a, b) => new Date(a.created) - new Date(b.created));
+                break;
+            case 'name':
+                sorted.sort((a, b) => a.filename.localeCompare(b.filename));
+                break;
+            case 'size':
+                // Mock sorting by size
+                sorted.sort((a, b) => Math.random() - 0.5);
+                break;
+        }
+
+        displayScreenshots(sorted);
+    }
+
+    function changeView() {
+        const grid = document.getElementById('screenshotsGrid');
+        grid.className = `gallery-grid view-${currentView}`;
+
+        // Re-render with current view
+        displayScreenshots(allScreenshots);
+    }
+
+    function showScreenshot(filename, path, created, size) {
+        currentScreenshot = { filename, path, created, size };
+
+        document.getElementById('modalImage').src = `/static/screenshots/${filename}`;
+        document.getElementById('modalInfo').innerHTML = `
+            <div class="info-row">
+                <strong>Filename:</strong> ${filename}
+            </div>
+            <div class="info-row">
+                <strong>Created:</strong> ${created}
+            </div>
+            <div class="info-row">
+                <strong>Size:</strong> ${size} KB
+            </div>
+            <div class="info-row">
+                <strong>Path:</strong> <code>${path}</code>
+            </div>
+        `;
+
+        // Remove any stale backdrops and modal-open state before opening
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+
+        const modalEl = document.getElementById('screenshotModal');
+        // Ensure modal element is attached directly to <body> to avoid clipping by ancestors
+        if (modalEl && modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        
+        // Add cleanup event listeners
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }, { once: true });
+        
+        modal.show();
+    }
+
+    function downloadScreenshot() {
+        if (currentScreenshot) {
+            const link = document.createElement('a');
+            link.href = `/static/screenshots/${currentScreenshot.filename}`;
+            link.download = currentScreenshot.filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showSuccess('News Card downloaded successfully!');
+        }
+    }
+
+    function shareScreenshot() {
+        if (currentScreenshot && navigator.share) {
+            navigator.share({
+                title: 'News Card from OmniPush',
+                text: `Check out this screenshot: ${currentScreenshot.filename}`,
+                url: window.location.href
+            });
+        } else {
+            // Fallback: copy to clipboard
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showSuccess('Link copied to clipboard!');
+            });
+        }
+    }
+
+    async function deleteScreenshot() {
+        if (!currentScreenshot) return;
+
+        if (!confirm('Are you sure you want to delete this screenshot?')) return;
+
+        try {
+            const response = await fetch(`/api/screenshots/${currentScreenshot.filename}`, {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                const modalInstance = bootstrap.Modal.getInstance(document.getElementById('screenshotModal'));
+                if (modalInstance) {
+                    modalInstance.hide();
+                    modalInstance.dispose();
+                }
+                // Cleanup any remaining modal elements
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                
+                showSuccess('News Card deleted successfully!');
+                loadScreenshots(); // Reload the grid
+            } else {
+                showError('Failed to delete screenshot');
+            }
+        } catch (error) {
+            console.error('Error deleting screenshot:', error);
+            showError('Failed to delete screenshot');
+        }
+    }
+
+    function showBulkActions() {
+        if (selectedScreenshots.size === 0) return;
+        
+        // Remove any stale backdrops and modal-open state before opening
+        document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+        document.body.classList.remove('modal-open');
+        document.body.style.removeProperty('overflow');
+
+        const modalEl = document.getElementById('bulkActionsModal');
+        // Ensure modal element is attached directly to <body> to avoid clipping by ancestors
+        if (modalEl && modalEl.parentElement !== document.body) {
+            document.body.appendChild(modalEl);
+        }
+        const modal = new bootstrap.Modal(modalEl);
+        
+        // Add cleanup event listeners
+        modalEl.addEventListener('hidden.bs.modal', () => {
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+        }, { once: true });
+        
+        modal.show();
+    }
+
+    function bulkDownload() {
+        // Implementation for bulk download
+        showSuccess(`Downloading ${selectedScreenshots.size} screenshots...`);
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    }
+
+    function bulkShare() {
+        // Implementation for bulk share
+        showSuccess(`Sharing ${selectedScreenshots.size} screenshots...`);
+        const modalInstance = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+    }
+
+    async function bulkDelete() {
+        if (selectedScreenshots.size === 0) return;
+
+        if (!confirm(`Are you sure you want to delete ${selectedScreenshots.size} screenshots? This action cannot be undone.`)) return;
+
+        try {
+            // Implementation for bulk delete
+            showSuccess(`${selectedScreenshots.size} screenshots deleted successfully!`);
+            selectedScreenshots.clear();
+            updateSelectionUI();
+            loadScreenshots();
+            const modalInstance = bootstrap.Modal.getInstance(document.getElementById('bulkActionsModal'));
+            if (modalInstance) {
+                modalInstance.hide();
+            }
+        } catch (error) {
+            showError('Failed to delete screenshots');
+        }
+    }
+
+    async function clearAllScreenshots() {
+        if (!confirm('Are you sure you want to delete ALL screenshots? This action cannot be undone.')) return;
+
+        try {
+            const response = await fetch('/api/screenshots', {
+                method: 'DELETE'
+            });
+
+            if (response.ok) {
+                showSuccess('All screenshots deleted successfully!');
+                selectedScreenshots.clear();
+                updateSelectionUI();
+                loadScreenshots();
+            } else {
+                showError('Failed to delete screenshots');
+            }
+        } catch (error) {
+            console.error('Error deleting screenshots:', error);
+            showError('Failed to delete screenshots');
+        }
+    }
+
+    function refreshScreenshots() {
+        document.getElementById('screenshotsGrid').innerHTML = `
+            <div class="loading-placeholder text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Refreshing screenshots...</p>
+            </div>
+        `;
+        loadScreenshots();
+    }
+
+    function exportGallery() {
+        // Implementation for gallery export
+        showSuccess('Gallery export started...');
+    }
+
+    function toggleFilters() {
+        const filters = document.querySelector('.gallery-filters');
+        filters.classList.toggle('collapsed');
+    }
+</script>
+
+<style>
+    .hero-section {
+        padding: 2rem 0;
+    }
+
+    .hero-stats {
+        display: flex;
+        justify-content: center;
+        gap: 3rem;
+        margin: 2rem 0;
+    }
+
+    .stat-item {
+        text-align: center;
+        padding: 1rem;
+        background: var(--bg-elevated);
+        border-radius: var(--border-radius-lg);
+        border: 1px solid var(--border-color);
+        min-width: 120px;
+    }
+
+    .stat-number {
+        font-size: 2rem;
+        font-weight: 800;
+        background: var(--gradient-primary);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+    }
+
+    .stat-label {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .gallery-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .gallery-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: var(--gradient-primary);
+    }
+
+    .header-content small {
+        font-size: 0.875rem;
+        color: var(--text-muted);
+    }
+
+    .gallery-filters {
+        background: var(--bg-elevated);
+        padding: 1.5rem;
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+    }
+
+    .gallery-filters.collapsed {
+        display: none;
+    }
+
+    .gallery-grid {
+        display: grid;
+        gap: 1.5rem;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    }
+
+    .gallery-grid.view-list {
+        grid-template-columns: 1fr;
+    }
+
+    .gallery-grid.view-masonry {
+        columns: 3;
+        column-gap: 1.5rem;
+    }
+
+    .gallery-grid.view-masonry .gallery-item {
+        break-inside: avoid;
+        margin-bottom: 1.5rem;
+    }
+
+    .gallery-item {
+        transition: all 0.3s ease;
+    }
+
+    .screenshot-card {
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-lg);
+        overflow: hidden;
+        position: relative;
+    }
+
+    .screenshot-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-2xl);
+        border-color: var(--accent-primary);
+    }
+
+    .card-img-top-container {
+        position: relative;
+        overflow: hidden;
+        height: 200px;
+        background: var(--bg-elevated);
+    }
+
+    .screenshot-thumbnail {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .screenshot-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(99, 102, 241, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        opacity: 0;
+        transition: all 0.3s ease;
+        backdrop-filter: blur(4px);
+    }
+
+    .screenshot-card:hover .screenshot-overlay {
+        opacity: 1;
+    }
+
+    .screenshot-card:hover .screenshot-thumbnail {
+        transform: scale(1.1);
+    }
+
+    .overlay-content {
+        text-align: center;
+    }
+
+    .overlay-content span {
+        font-size: 0.875rem;
+        font-weight: 500;
+    }
+
+    .selection-checkbox {
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        z-index: 10;
+    }
+
+    .screenshot-info {
+        padding: 1rem;
+    }
+
+    .screenshot-title {
+        color: var(--text-primary);
+        font-size: 0.875rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .screenshot-meta {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .meta-item {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        display: flex;
+        align-items: center;
+    }
+
+    .gallery-stats {
+        border-top: 1px solid var(--border-color);
+    }
+
+    .stat-item-small {
+        text-align: center;
+        padding: 1rem;
+    }
+
+    .stat-item-small i {
+        font-size: 1.5rem;
+        display: block;
+    }
+
+    .stat-number-small {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-primary);
+        margin: 0.5rem 0;
+    }
+
+    .stat-label-small {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .screenshot-preview-container {
+        max-width: 100%;
+    }
+
+    .screenshot-preview {
+        max-width: 100%;
+        height: auto;
+        border-radius: var(--border-radius-md);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .screenshot-info-panel {
+        background: var(--bg-elevated);
+        padding: 1.5rem;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        backdrop-filter: blur(10px);
+    }
+
+    .info-card {
+        background: var(--bg-card);
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        height: 100%;
+        backdrop-filter: blur(10px);
+    }
+
+    .info-card h6 {
+        color: var(--text-primary);
+        margin-bottom: 1rem;
+        font-weight: 600;
+    }
+
+    .info-content {
+        color: var(--text-secondary);
+        font-size: 0.875rem;
+    }
+
+    .info-row {
+        margin-bottom: 0.5rem;
+        padding: 0.25rem 0;
+    }
+
+    .action-buttons-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .bulk-actions-list {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+
+    .loading-placeholder,
+    .error-placeholder,
+    .empty-placeholder {
+        padding: 3rem 1rem;
+    }
+
+    .empty-placeholder .btn {
+        margin-top: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .hero-stats {
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .stat-item {
+            min-width: auto;
+        }
+
+        .gallery-grid {
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1rem;
+        }
+
+        .gallery-filters .row {
+            gap: 1rem;
+        }
+
+        .header-actions {
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .header-actions .btn-group {
+            width: 100%;
+        }
+
+        .header-actions .btn {
+            flex: 1;
+        }
+    }
+
+    @media (max-width: 576px) {
+        .gallery-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .gallery-filters {
+            padding: 1rem;
+        }
+
+        .gallery-filters .row>div {
+            margin-bottom: 1rem;
+        }
+    }
+</style>
+{% endblock %}

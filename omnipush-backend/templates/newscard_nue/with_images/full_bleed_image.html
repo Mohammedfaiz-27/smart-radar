@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>News Card - Full Bleed with Drawer (More Content Space)</title>
+<style>
+  @font-face {
+    font-family: "TAMIL-UNI013";
+    src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  :root{
+    --pad: 40px;
+    --gap: 18px;
+    --drawer-height: 60vh; /* more space for content (was 45vh) */
+    --min-title: 18px;
+    --max-title: 132px;
+    --accent: #0ea5e9;
+    --text: #0b1020;
+    --muted: #5b6475;
+    --radius: 24px;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+    background: #000;
+    overflow: hidden; /* clean capture */
+  }
+  body.lang-ta { direction: ltr; }
+
+  .container {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  /* Full-bleed image */
+  .image-section {
+    position: absolute;
+    inset: 0;
+  }
+  .news-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Slightly stronger gradient for better contrast with taller content */
+  .image-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to top,
+      rgba(0,0,0,0.6) 0%,
+      rgba(0,0,0,0.28) 35%,
+      rgba(0,0,0,0.15) 60%,
+      rgba(0,0,0,0) 100%
+    );
+    pointer-events: none;
+  }
+
+  /* Category chip near top-left */
+  .category-badge {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    background: rgba(255,255,255,0.96);
+    color: #0f172a;
+    padding: 10px 16px;
+    border-radius: 999px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 14px;
+    border: 1px solid rgba(15,23,42,0.08);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    max-width: calc(100% - 48px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Bottom content drawer — taller for more text */
+  .content-drawer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: var(--drawer-height);
+    display: grid;
+    grid-template-rows: 1fr auto;
+    backdrop-filter: blur(10px);
+    background: linear-gradient(180deg, rgba(255,255,255,0.85), rgba(255,255,255,0.95));
+    border-top-left-radius: var(--radius);
+    border-top-right-radius: var(--radius);
+    padding: var(--pad);
+    gap: var(--gap);
+    box-sizing: border-box;
+  }
+
+  .headline-wrap {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .headline {
+    margin: 0;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.08;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-family: "TAMIL-UNI013", "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 18px;
+    font-weight: 600;
+    gap: 16px;
+    min-height: 28px;
+    border-top: 1.5px solid rgba(2,6,23,0.08);
+    padding-top: 14px;
+  }
+
+  .source {
+    color: var(--accent);
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
+  }
+  .date {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40%;
+  }
+</style>
+</head>
+<body class="lang-ta">
+  <div class="container">
+    <div class="image-section">
+      <img src="{{image_url}}" alt="News Image" class="news-image" />
+      <div class="image-overlay"></div>
+      <div class="category-badge">{{category}}</div>
+    </div>
+
+    <div class="content-drawer">
+      <div class="headline-wrap">
+        <div class="headline">{{content}}</div>
+      </div>
+      <div class="footer">
+        <div class="source">{{source}}</div>
+        <div class="date">{{date}}</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".headline");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+</html>

@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>News Card - Editorial Compact (No Image)</title>
+<style>
+  @font-face {
+    font-family: "TAMIL-UNI013";
+    src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  :root{
+    --pad: 36px;
+    --gap: 18px;
+    --min-title: 18px;
+    --max-title: 120px;
+    --card-radius: 22px;
+    --accent: #ea580c; /* orange */
+    --bg: #0b1324;
+    --panel: #ffffff;
+    --text: #0f172a;
+    --muted: #6b7280;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+    background: radial-gradient(120% 120% at 50% -20%, #1f2937 0%, #0b1324 60%, #070b14 100%);
+    overflow: hidden;
+  }
+  body.lang-ta { direction: ltr; }
+
+  .container {
+    height: 100vh;
+    width: 100vw;
+    padding: 24px;
+    box-sizing: border-box;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 18px;
+  }
+
+  /* Top utility bar */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: #e5e7eb;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-mark {
+    width: 12px; height: 12px; border-radius: 3px; background: var(--accent);
+    box-shadow: 0 0 0 4px rgba(234,88,12,0.15);
+  }
+  .top-meta {
+    font-size: 14px; color: #cbd5e1; font-weight: 600;
+  }
+
+  /* Main card */
+  .card {
+    display: flex;
+    flex-direction: column;
+    background: var(--panel);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    box-shadow: 0 30px 80px -30px rgba(0,0,0,0.45);
+    position: relative;
+  }
+
+  .content-section {
+    padding: var(--pad);
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: var(--gap);
+    background: linear-gradient(180deg, #ffffff 0%, #f9fafb 100%);
+    flex: 1;
+  }
+
+  .headline-wrap {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .headline {
+    margin: 0;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.08;
+    overflow: hidden;
+    overflow-wrap: anywhere; word-break: break-word;
+    font-family: "TAMIL-UNI013", "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+  }
+
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--muted);
+    font-size: 16px; font-weight: 600; gap: 16px; min-height: 28px;
+    border-top: 1px solid #e5e7eb; padding-top: 12px;
+  }
+  .source { color: var(--accent); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+  .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+
+  .category-badge {
+    position: absolute; 
+    top: 20px; 
+    right: 20px;
+    background: rgba(255,255,255,0.95);
+    color: #111827; 
+    padding: 10px 16px; 
+    border-radius: 999px;
+    font-weight: 800; 
+    letter-spacing: 0.5px; 
+    text-transform: uppercase; 
+    font-size: 12px;
+    border: 1px solid rgba(0,0,0,0.06);
+    max-width: calc(100% - 40px); 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis;
+  }
+</style>
+</head>
+<body class="lang-ta">
+  <div class="container">
+    <div class="topbar">
+      <div class="brand">
+        <div class="brand-mark"></div>
+        <div>{{source}}</div>
+      </div>
+      <div class="top-meta">{{date}}</div>
+    </div>
+
+    <div class="card">
+      <div class="category-badge">{{category}}</div>
+      <div class="content-section">
+        <div class="headline-wrap">
+          <div class="headline">{{content}}</div>
+        </div>
+        <div class="footer">
+          <div class="source">{{category}}</div>
+          <div class="date">{{date}}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".headline");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+</html>

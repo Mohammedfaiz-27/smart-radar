@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>News Card - Hero Left Stack</title>
+<style>
+  @font-face {
+    font-family: "TAMIL-UNI013";
+    src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  :root{
+    --pad: 44px;
+    --gap: 22px;
+    --min-title: 18px;
+    --max-title: 136px;
+    --accent: #d946ef; /* magenta */
+    --text: #0f172a;
+    --muted: #475569;
+    --image-width: 46%;
+    --content-width: 54%;
+    --r: 22px;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+    background: #f8fafc;
+    overflow: hidden;
+  }
+  body.lang-ta { direction: ltr; }
+
+  .container {
+    width: 100vw; height: 100vh;
+    display: grid;
+    grid-template-columns: var(--image-width) var(--content-width);
+    background: #fff;
+    box-shadow: 0 24px 80px -32px rgba(2,6,23,0.25);
+  }
+
+  /* Left image column */
+  .image-section {
+    position: relative; overflow: hidden; background: #000;
+  }
+  .news-image {
+    width: 100%; height: 100%; display: block; object-fit: cover;
+    transform: scale(1.02);
+  }
+  .image-overlay {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.35), rgba(0,0,0,0.05) 45%, rgba(0,0,0,0) 70%);
+    pointer-events: none;
+  }
+
+  /* Vertical category ribbon on image */
+  .category-ribbon {
+    position: absolute;
+    top: 24px; left: 24px;
+    background: var(--accent);
+    color: #fff;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-weight: 900;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    font-size: 12px;
+    box-shadow: 0 12px 28px rgba(217,70,239,0.35);
+    max-width: calc(100% - 48px);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  /* Right content column */
+  .content-section {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    padding: var(--pad);
+    gap: var(--gap);
+    background:
+      radial-gradient(120% 100% at 0% 0%, #f1f5f9 0%, #ffffff 40%),
+      #fff;
+  }
+
+  .headline-wrap {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .headline {
+    margin: 0;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.08;
+    overflow: hidden;
+    overflow-wrap: anywhere; word-break: break-word;
+    font-family: "TAMIL-UNI013", "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", "Latha", sans-serif;
+  }
+
+  .footer {
+    display: flex; align-items: center; justify-content: space-between;
+    color: var(--muted);
+    font-size: 18px; font-weight: 700;
+    gap: 16px; min-height: 30px;
+    border-top: 2px solid #e2e8f0; padding-top: 12px;
+  }
+
+  .source { color: var(--accent); font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 55%; }
+  .date { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+</style>
+</head>
+<body class="lang-ta">
+  <div class="container">
+    <div class="image-section">
+      <img src="{{image_url}}" alt="News Image" class="news-image" />
+      <div class="image-overlay"></div>
+      <div class="category-ribbon">{{category}}</div>
+    </div>
+
+    <div class="content-section">
+      <div class="headline-wrap">
+        <div class="headline">{{content}}</div>
+      </div>
+      <div class="footer">
+        <div class="source">{{source}}</div>
+        <div class="date">{{date}}</div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".headline");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+</html>

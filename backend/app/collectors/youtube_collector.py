@@ -1,111 +1,138 @@
 """
 YouTube data collector implementation
-Uses YouTube138 RapidAPI for data collection (same key as X/Facebook)
+Uses YouTube Data API v3 (YOUTUBE_API_KEY)
 """
 from typing import Dict, Any, AsyncGenerator
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import os
-import asyncio
 from app.collectors.base_collector import BaseCollector
 from app.models.posts_table import PostCreate, Platform
 from app.models.cluster import PlatformConfig
 
 
 class YouTubeCollector(BaseCollector):
-    """Collector for YouTube platform using RapidAPI YouTube138"""
+    """Collector for YouTube platform using YouTube Data API v3"""
+
+    BASE_URL = "https://www.googleapis.com/youtube/v3"
 
     def __init__(self):
-        api_key = os.getenv("X_RAPIDAPI_KEY")  # Same RapidAPI key used for X and Facebook
-        api_host = "youtube138.p.rapidapi.com"
-        super().__init__(api_key=api_key, api_host=api_host)
-        self.base_url = f"https://{api_host}"
-        self.rate_limit_delay = 1.0
+        api_key = os.getenv("YOUTUBE_API_KEY")
+        super().__init__(api_key=api_key, api_host="www.googleapis.com")
+        self.rate_limit_delay = 0.5
+
+    async def _youtube_request(self, url: str, params: dict) -> dict:
+        """Single-attempt request — no retries on 403 to avoid slow timeouts."""
+        import aiohttp
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url, params=params, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                body = await resp.json(content_type=None)
+                if resp.status == 403:
+                    reason = body.get("error", {}).get("message", "forbidden")
+                    raise Exception(f"403 {reason}")
+                if resp.status != 200:
+                    raise Exception(f"HTTP {resp.status}")
+                return body
 
     def get_platform(self) -> Platform:
         return Platform.YOUTUBE
 
     def get_api_endpoint(self) -> str:
-        return f"{self.base_url}/search/"
+        return f"{self.BASE_URL}/search"
 
     async def search(
         self,
         keyword: str,
         config: PlatformConfig,
-        max_results: int = 100
+        max_results: int = 100,
     ) -> AsyncGenerator[Dict[str, Any], None]:
         if not self.api_key:
-            self.logger.error("🔑 YouTube (RapidAPI) key not configured")
+            self.logger.error("🔑 YOUTUBE_API_KEY not configured")
             return
 
-        headers = {
-            "x-rapidapi-key": self.api_key,
-            "x-rapidapi-host": self.api_host
-        }
-
         has_tamil = any('஀' <= char <= '௿' for char in keyword)
-        self.logger.debug(f"🔍 YouTube138 search for: '{keyword}' (Tamil: {has_tamil})")
+        self.logger.debug(f"🔍 YouTube Data API v3 search for: '{keyword}' (Tamil: {has_tamil})")
 
-        params = {
-            "q": keyword,
-            "hl": "ta" if has_tamil else "en",
-            "gl": "IN"
-        }
-
-        total_fetched = 0
+        published_after = (
+            datetime.now(timezone.utc) - timedelta(days=30)
+        ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         try:
-            response = await self.make_request(
-                f"{self.base_url}/search/",
-                headers=headers,
-                params=params
+            search_data = await self._youtube_request(
+                f"{self.BASE_URL}/search",
+                params={
+                    "key": self.api_key,
+                    "q": keyword,
+                    "type": "video",
+                    "part": "snippet",
+                    "maxResults": min(max_results, 50),
+                    "order": "date",
+                    "publishedAfter": published_after,
+                    "regionCode": "IN",
+                    "relevanceLanguage": "ta" if has_tamil else "en",
+                },
             )
-
-            if not response:
-                self.logger.warning("🚫 No response from YouTube138 search API")
-                return
-
-            contents = response.get("contents", [])
-            self.logger.debug(f"📦 YouTube138 search returned {len(contents)} items")
-
-            for item in contents:
-                if total_fetched >= max_results:
-                    return
-
-                video = item.get("video")
-                if not video:
-                    continue
-
-                video_id = video.get("videoId")
-                if not video_id:
-                    continue
-
-                # Use only search result data — no extra detail API call to avoid rate limits
-                stats = video.get("stats", {})
-                views = int(stats.get("views", 0) or 0)
-
-                # Filter by views only (likes/comments not available from search results)
-                if views < max(config.min_engagement * 5, 100):
-                    continue
-
-                combined = {
-                    "videoId": video_id,
-                    "title": video.get("title", ""),
-                    "description": "",
-                    "channelName": video.get("channelName", "Unknown"),
-                    "channelId": video.get("channelId", ""),
-                    "publishDate": "",
-                    "stats": {
-                        "views": views,
-                        "likes": 0,
-                        "comments": 0
-                    }
-                }
-
-                total_fetched += 1
-                yield combined
-
         except Exception as e:
-            self.logger.error(f"❌ Error searching YouTube for '{keyword}': {e}")
+            self.logger.error(f"❌ YouTube search failed for '{keyword}': {e}")
+            return
+
+        if not search_data:
+            return
+
+        items = search_data.get("items", [])
+        video_ids = [
+            item["id"]["videoId"]
+            for item in items
+            if item.get("id", {}).get("videoId")
+        ]
+
+        if not video_ids:
+            self.logger.warning(f"🚫 No videos found for '{keyword}'")
+            return
+
+        # Batch-fetch statistics for all videos in one request
+        try:
+            stats_data = await self._youtube_request(
+                f"{self.BASE_URL}/videos",
+                params={
+                    "key": self.api_key,
+                    "id": ",".join(video_ids),
+                    "part": "statistics",
+                },
+            )
+        except Exception as e:
+            self.logger.warning(f"⚠️ Could not fetch video stats for '{keyword}': {e}")
+            stats_data = {}
+
+        stat_map: Dict[str, Dict] = {
+            v["id"]: v.get("statistics", {})
+            for v in (stats_data or {}).get("items", [])
+        }
+
+        for item in items:
+            video_id = item.get("id", {}).get("videoId")
+            if not video_id:
+                continue
+
+            snippet = item.get("snippet", {})
+            stats = stat_map.get(video_id, {})
+            views = int(stats.get("viewCount", 0) or 0)
+
+            if views < max(config.min_engagement * 5, 100):
+                continue
+
+            yield {
+                "videoId": video_id,
+                "title": snippet.get("title", ""),
+                "description": snippet.get("description", ""),
+                "channelName": snippet.get("channelTitle", "Unknown"),
+                "channelId": snippet.get("channelId", ""),
+                "publishDate": snippet.get("publishedAt", ""),
+                "stats": {
+                    "views": views,
+                    "likes": int(stats.get("likeCount", 0) or 0),
+                    "comments": int(stats.get("commentCount", 0) or 0),
+                },
+            }
 
     def parse_post(self, raw_post: Dict[str, Any], cluster_id: str) -> PostCreate:
         video_id = raw_post.get("videoId", "")
@@ -113,16 +140,7 @@ class YouTubeCollector(BaseCollector):
         description = raw_post.get("description", "")
         post_text = f"{title}\n\n{description}".strip() if description else title
 
-        channel_name = raw_post.get("channelName", "Unknown")
-        post_url = f"https://www.youtube.com/watch?v={video_id}"
-
-        publish_date = raw_post.get("publishDate", "") or raw_post.get("uploadDate", "")
-        posted_at = self._parse_date(publish_date)
-
         stats = raw_post.get("stats", {})
-        views = int(stats.get("views", 0) or 0)
-        likes = int(stats.get("likes", 0) or 0)
-        comments = int(stats.get("comments", 0) or 0)
 
         if any('஀' <= char <= '௿' for char in post_text):
             self.logger.info(f"🇮🇳 Found Tamil YouTube video: {title[:100]}")
@@ -131,15 +149,15 @@ class YouTubeCollector(BaseCollector):
             platform_post_id=video_id,
             platform=Platform.YOUTUBE,
             cluster_id=cluster_id,
-            author_username=channel_name,
+            author_username=raw_post.get("channelName", "Unknown"),
             author_followers=0,
             post_text=self.clean_text(post_text),
-            post_url=post_url,
-            posted_at=posted_at,
-            likes=likes,
-            comments=comments,
+            post_url=f"https://www.youtube.com/watch?v={video_id}",
+            posted_at=self._parse_date(raw_post.get("publishDate", "")),
+            likes=int(stats.get("likes", 0) or 0),
+            comments=int(stats.get("comments", 0) or 0),
             shares=0,
-            views=views
+            views=int(stats.get("views", 0) or 0),
         )
 
     def extract_engagement_metrics(self, raw_post: Dict[str, Any]) -> Dict[str, int]:
@@ -148,17 +166,13 @@ class YouTubeCollector(BaseCollector):
             "likes": int(stats.get("likes", 0) or 0),
             "comments": int(stats.get("comments", 0) or 0),
             "shares": 0,
-            "views": int(stats.get("views", 0) or 0)
+            "views": int(stats.get("views", 0) or 0),
         }
 
     def _parse_date(self, date_str: str) -> datetime:
-        """Parse date from YouTube138 response (YYYY-MM-DD or ISO format)"""
         if not date_str:
             return datetime.utcnow()
         try:
-            return datetime.strptime(date_str, "%Y-%m-%d")
-        except ValueError:
-            try:
-                return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
-            except Exception:
-                return datetime.utcnow()
+            return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+        except Exception:
+            return datetime.utcnow()

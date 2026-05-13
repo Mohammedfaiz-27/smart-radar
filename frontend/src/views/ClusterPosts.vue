@@ -360,23 +360,25 @@ const currentTabPosts = computed(() => {
 const fetchClusterPosts = async () => {
   loading.value = true
   try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+
     // First, fetch the cluster by name to get its ID
-    const clustersResponse = await fetch('http://localhost:8000/api/v1/clusters/')
+    const clustersResponse = await fetch(`${apiBase}/api/v1/clusters/`)
     if (!clustersResponse.ok) {
       throw new Error('Failed to fetch clusters')
     }
-    
+
     const clusters = await clustersResponse.json()
     const cluster = clusters.find(c => c.name === props.name)
-    
+
     if (!cluster) {
       throw new Error(`Cluster ${props.name} not found`)
     }
-    
+
     // Fetch posts directly from correct API (bypassing smart selector)
-    const postsResponse = await fetch(`http://localhost:8000/api/v1/posts?cluster_id=${cluster.id}&limit=2000`)
+    const postsResponse = await fetch(`${apiBase}/api/v1/posts?cluster_id=${cluster.id}&limit=1000`)
     let clusterPosts = []
-    
+
     if (postsResponse.ok) {
       const postsData = await postsResponse.json()
       clusterPosts = Array.isArray(postsData) ? postsData : (postsData.posts || [])
@@ -384,11 +386,11 @@ const fetchClusterPosts = async () => {
     } else {
       console.error('Failed to fetch posts', postsResponse.status)
     }
-    
+
     // Also fetch news articles, print magazines, and print daily separately
-    const newsResponse = await fetch(`http://localhost:8000/api/v1/clusters/${cluster.id}/posts?platform=web_news&limit=1000`)
-    const printMagazineResponse = await fetch(`http://localhost:8000/api/v1/posts/print-magazines?cluster_id=${cluster.id}&limit=1000`)
-    const printDailyResponse = await fetch(`http://localhost:8000/api/v1/posts/print-daily?cluster_id=${cluster.id}&limit=1000`)
+    const newsResponse = await fetch(`${apiBase}/api/v1/clusters/${cluster.id}/posts?platform=web_news&limit=1000`)
+    const printMagazineResponse = await fetch(`${apiBase}/api/v1/posts/print-magazines?cluster_id=${cluster.id}&limit=1000`)
+    const printDailyResponse = await fetch(`${apiBase}/api/v1/posts/print-daily?cluster_id=${cluster.id}&limit=1000`)
     
     const posts = clusterPosts // Use filtered posts from store
     const newsArticles = []

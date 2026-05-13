@@ -24,38 +24,8 @@ class CollectionResponse(BaseModel):
     post_ids: List[str]
     status: str
 
-@router.post("/collect/{cluster_id}", response_model=CollectionResponse)
-async def collect_posts_for_cluster(
-    cluster_id: str,
-    request: CollectionRequest,
-    background_tasks: BackgroundTasks
-):
-    """Collect posts for a specific cluster"""
-    try:
-        # Get cluster information
-        cluster_service = ClusterService()
-        cluster = await cluster_service.get_cluster(cluster_id)
-        if not cluster:
-            raise HTTPException(status_code=404, detail="Cluster not found")
-        
-        # Start collection
-        async with DataCollectionService() as collection_service:
-            post_ids = await collection_service.collect_posts_for_cluster(
-                cluster_id=cluster_id,
-                keywords=cluster.keywords,
-                platforms=request.platforms
-            )
-        
-        return CollectionResponse(
-            cluster_id=cluster_id,
-            collected_posts=len(post_ids),
-            post_ids=post_ids,
-            status="completed"
-        )
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Collection failed: {str(e)}")
-
+# NOTE: /collect/batch MUST be registered before /collect/{cluster_id} so FastAPI
+# does not treat the literal string "batch" as a cluster_id path parameter.
 @router.post("/collect/batch", response_model=List[CollectionResponse])
 async def collect_posts_batch(
     request: BatchCollectionRequest,
@@ -95,9 +65,41 @@ async def collect_posts_batch(
             ))
         
         return responses
-        
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Batch collection failed: {str(e)}")
+
+@router.post("/collect/{cluster_id}", response_model=CollectionResponse)
+async def collect_posts_for_cluster(
+    cluster_id: str,
+    request: CollectionRequest,
+    background_tasks: BackgroundTasks
+):
+    """Collect posts for a specific cluster"""
+    try:
+        # Get cluster information
+        cluster_service = ClusterService()
+        cluster = await cluster_service.get_cluster(cluster_id)
+        if not cluster:
+            raise HTTPException(status_code=404, detail="Cluster not found")
+
+        # Start collection
+        async with DataCollectionService() as collection_service:
+            post_ids = await collection_service.collect_posts_for_cluster(
+                cluster_id=cluster_id,
+                keywords=cluster.keywords,
+                platforms=request.platforms
+            )
+
+        return CollectionResponse(
+            cluster_id=cluster_id,
+            collected_posts=len(post_ids),
+            post_ids=post_ids,
+            status="completed"
+        )
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Collection failed: {str(e)}")
 
 @router.post("/collect/start-background/{cluster_id}")
 async def start_background_collection(

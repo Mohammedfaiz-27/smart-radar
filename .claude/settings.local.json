@@ -45,7 +45,11 @@
       "PowerShell(Get-Command *)",
       "Bash(python -c \"import re; content=open\\('threat_campaigns.py'\\).read\\(\\); content=re.sub\\(r'from bson[^\\\\n]*\\\\n', '', content\\); content=re.sub\\(r'import bson[^\\\\n]*\\\\n', '', content\\); open\\('threat_campaigns.py','w'\\).write\\(content\\)\")",
       "Bash(git commit -m ' *)",
-      "Bash(git push *)"
+      "Bash(git push *)",
+      "Bash(dir \"C:\\\\Users\\\\Asus\\\\Downloads\\\\Samrt radar Final\\\\Samrt radar Final\\\\omnipush-backend\" /b /a-d)",
+      "PowerShell(Get-ChildItem \"C:\\\\Users\\\\Asus\\\\Downloads\\\\Samrt radar Final\\\\Samrt radar Final\\\\omnipush-backend\" -Name -File | Where-Object { $_ -match \"Dockerfile|docker\" })",
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\Asus\\\\Downloads\\\\Samrt radar Final\\\\Samrt radar Final\\\\omnipush-backend\" -Recurse -Directory)",
+      "Bash(Select-Object FullName)"
     ],
     "deny": [],
     "ask": []

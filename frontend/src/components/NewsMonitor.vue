@@ -155,7 +155,8 @@ const fetchNewsArticles = async () => {
   loading.value = true
   try {
     // Fetch real news data from API
-    const response = await fetch('http://localhost:8000/api/v1/news?limit=10&hours_back=24')
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/v1/news?limit=10&hours_back=24`)
     if (response.ok) {
       const articles = await response.json()
       

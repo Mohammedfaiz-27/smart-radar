@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    @font-face {
+      font-family: "TAMIL-UNI013";
+      src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Grotesk";
+      src: url("https://techoffee-public-1.s3.us-east-1.amazonaws.com/newsit/Grotesk-Medium.ttf") format("truetype");
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background: linear-gradient(45deg, #ff9a9e 0%, #fecfef 25%, #fecfef 75%, #fca5f1 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100vw;
+      height: 100vh;
+      padding: 0;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body.lang-ta {
+      font-family: "TAMIL-UNI013", sans-serif;
+    }
+
+    body.lang-en {
+      font-family: "Grotesk", sans-serif;
+      font-weight: bold;
+    }
+
+    .container {
+      position: relative;
+      text-align: center;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.2));
+    }
+
+    .inner-container {
+      position: relative;
+      text-align: center;
+      color: white;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: stretch;
+      justify-content: start;
+      flex-direction: column;
+    }
+
+    .heading-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 25px 40px;
+      background: linear-gradient(135deg, #ff6b9d, #c44569);
+      overflow: hidden;
+    }
+
+    .heading-row::before {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 10px,
+        rgba(255, 255, 255, 0.1) 10px,
+        rgba(255, 255, 255, 0.1) 20px
+      );
+      animation: slide 20s linear infinite;
+    }
+
+    @keyframes slide {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .footer-row {
+      width: 100%;
+      height: 80px;
+      display: flex;
+      align-items: end;
+      justify-content: stretch;
+      margin-top: auto;
+      padding: 0 clamp(20px, 4vw, 40px) 20px;
+      background: linear-gradient(135deg, #ffa726, #ff7043);
+    }
+
+    .inner-footer-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      padding: 0 clamp(20px, 4vw, 40px);
+      z-index: 2;
+    }
+
+    .inner-footer-row>div {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .pill {
+      padding: 8px 16px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid rgba(255, 255, 255, 0.8);
+      border-radius: 25px;
+      color: rgba(255, 255, 255, 0.9);
+      font-size: clamp(14px, 2vw, 18px);
+      font-family: sans-serif;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .news {
+      color: #ffffff;
+      font-size: clamp(20px, 3vw, 28px);
+      font-weight: bold;
+      background: rgba(255, 255, 255, 0.2);
+      padding: 12px 24px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      font-family: sans-serif;
+      letter-spacing: 1px;
+      backdrop-filter: blur(10px);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      z-index: 2;
+      position: relative;
+    }
+
+    .centered {
+      color: #2c3e50;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      padding: clamp(20px, 4vw, 40px) clamp(25px, 5vw, 50px);
+      flex-grow: 1;
+      flex-direction: column;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255, 107, 157, 0.1) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255, 112, 67, 0.1) 0%, transparent 50%);
+    }
+
+    .headline-wrap {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .centered span {
+      /* max-width: 100%;
+      max-height: 100%; */
+      font-size: clamp(24px, 8vw, 85px);
+      line-height: 1.2;
+      word-wrap: break-word;
+      margin-bottom: 12px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #c44569, #ff6b9d, #ffa726);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+    }
+
+    .side-decoration {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 20px;
+      height: 200px;
+      background: linear-gradient(45deg, #ff6b9d, #ffa726);
+      border-radius: 10px;
+    }
+
+    .side-decoration.left {
+      left: -10px;
+    }
+
+    .side-decoration.right {
+      right: -10px;
+    }
+  </style>
+  <title>{{channel_name}} - Style Magazine</title>
+</head>
+
+<body class="lang-ta">
+  <div class="container">
+    <div class="inner-container">
+      <div class="side-decoration left"></div>
+      <div class="side-decoration right"></div>
+      <div class="heading-row">
+        <div class="news">{{category}}</div>
+      </div>
+      <div class="centered">
+        <div class="headline-wrap">
+          <span>{{content}}</span>
+        </div>
+      </div>
+      <div class="footer-row">
+        <div class="inner-footer-row">
+          <div>
+            <div class="pill">{{source}}</div>
+            <div class="pill date">
+              <div>{{date}}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".centered span");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+
+</html>

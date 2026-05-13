@@ -26,7 +26,7 @@
       <div v-else class="space-y-3">
         <div
           v-for="item in items"
-          :key="item.id"
+          :key="item.post_id ?? item.id"
           class="flex items-start space-x-4 p-4 bg-gray-50 rounded-xl"
         >
           <!-- Date block -->
@@ -41,7 +41,12 @@
               <span class="text-xs text-gray-400">{{ formatTime(item.scheduled_at) }}</span>
             </div>
             <p class="text-xs text-gray-500 line-clamp-2">{{ item.content?.text || item.content || '' }}</p>
-            <div v-if="item.channels?.length" class="flex items-center space-x-1 mt-1">
+            <div v-if="item.platforms?.length" class="flex items-center space-x-1 mt-1">
+              <span v-for="platform in item.platforms" :key="platform" class="text-xs">
+                {{ getPlatformIcon(platform) }}
+              </span>
+            </div>
+            <div v-else-if="item.channels?.length" class="flex items-center space-x-1 mt-1">
               <span v-for="ch in item.channels" :key="ch.platform" class="text-xs">
                 {{ getPlatformIcon(ch.platform) }}
               </span>
@@ -88,7 +93,8 @@ async function loadCalendar() {
   loading.value = true
   try {
     const res = await smartPostApi.getCalendar()
-    items.value = res.data?.items || res.data || []
+    // Backend returns { events: [...], summary: {...} }
+    items.value = res.data?.events ?? res.data?.items ?? (Array.isArray(res.data) ? res.data : [])
   } catch {
     items.value = []
   } finally {

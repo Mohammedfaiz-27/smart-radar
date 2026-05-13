@@ -258,7 +258,8 @@ const fetchPlatformData = async () => {
       ? '/api/v1/sentiment/organization'
       : '/api/v1/sentiment/competitors'
     
-    const response = await fetch(`http://localhost:8000${endpoint}`)
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}${endpoint}`)
     if (response.ok) {
       const data = await response.json()
       const breakdown = data.platform_breakdown || {}
@@ -266,7 +267,7 @@ const fetchPlatformData = async () => {
     }
 
     // Fetch recent posts for this platform
-    const postsResponse = await fetch(`http://localhost:8000/api/v1/posts?cluster_type=${props.type}&platform=${props.platform}&limit=20`)
+    const postsResponse = await fetch(`${apiBase}/api/v1/posts?cluster_type=${props.type}&platform=${props.platform}&limit=20`)
     if (postsResponse.ok) {
       const postsData = await postsResponse.json()
       recentPosts.value = postsData.posts || []

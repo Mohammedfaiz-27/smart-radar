@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}OmniPush - City Research Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link href="/static/css/main.css" rel="stylesheet">
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <!-- D3.js for interactive graphs -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3-scale-chromatic/3.1.0/d3-scale-chromatic.min.js"></script>
+    
+    <!-- Markdown rendering (Marked) and sanitization (DOMPurify) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <div class="brand-icon me-3">
+                    <i class="fas fa-city"></i>
+                </div>
+                <span class="text-gradient">OmniPush</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/' %}active{% endif %}" href="/">
+                            <i class="fas fa-search me-2"></i>
+                            <span class="nav-text">Research</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/post' %}active{% endif %}" href="/post">
+                            <i class="fas fa-share-alt me-2"></i>
+                            <span class="nav-text">Publish</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.url.path == '/gallery' %}active{% endif %}" href="/gallery">
+                            <i class="fas fa-images me-2"></i>
+                            <span class="nav-text">Gallery</span>
+                        </a>
+                    </li>
+                    <!-- <li class="nav-item">
+                        <a class="nav-link" href="/analytics">
+                            <i class="fas fa-chart-line me-2"></i>
+                            <span class="nav-text">Analytics</span>
+                        </a>
+                    </li> -->
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <div class="main-content fade-in-up">
+            {% block content %}{% endblock %}
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center py-5">
+                    <div class="loading-container">
+                        <div class="loading-spinner mb-4">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        <h5 id="loadingText" class="text-primary mb-3">Processing...</h5>
+                        <p class="text-muted mb-0" id="loadingSubtext">Please wait while we work on your request</p>
+                        <div class="loading-progress mt-3">
+                            <div class="progress" style="height: 4px;">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-4">
+        <div id="successToast" class="toast align-items-center text-white border-0" role="alert" style="background: var(--gradient-success);">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center">
+                    <i class="fas fa-check-circle me-3 fa-lg"></i>
+                    <span id="successMessage">Operation completed successfully!</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+        <div id="errorToast" class="toast align-items-center text-white border-0" role="alert" style="background: var(--gradient-danger);">
+            <div class="d-flex">
+                <div class="toast-body d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle me-3 fa-lg"></i>
+                    <span id="errorMessage">An error occurred. Please try again.</span>
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Global utility functions
+        function showLoading(text = 'Processing...', subtext = 'Please wait while we work on your request') {
+            document.getElementById('loadingText').textContent = text;
+            document.getElementById('loadingSubtext').textContent = subtext;
+            new bootstrap.Modal(document.getElementById('loadingModal')).show();
+        }
+        
+        function hideLoading() {
+            const loadingEl = document.getElementById('loadingModal');
+            // Hide and fully dispose loading modal instance to avoid stale backdrops
+            const modalInstance = bootstrap.Modal.getInstance(loadingEl);
+            if (modalInstance) {
+                modalInstance.hide();
+                modalInstance.dispose();
+            }
+            // Defensive cleanup: remove any stray backdrops and modal-open state
+            document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            document.body.classList.remove('modal-open');
+            // Ensure inline scroll lock styles are removed
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            // Ensure the loading modal element is not left visible
+            loadingEl.classList.remove('show');
+            loadingEl.style.display = 'none';
+            // Run cleanup again on next tick in case of transition delays
+            setTimeout(() => {
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+                if (!document.querySelector('.modal.show')) {
+                    document.body.classList.remove('modal-open');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('padding-right');
+                }
+            }, 0);
+        }
+        
+        function showToast(type, message) {
+            const toastId = type === 'success' ? 'successToast' : 'errorToast';
+            const messageId = type === 'success' ? 'successMessage' : 'errorMessage';
+            
+            document.getElementById(messageId).textContent = message;
+            new bootstrap.Toast(document.getElementById(toastId), {
+                delay: 5000,
+                autohide: true
+            }).show();
+        }
+        
+        function showSuccess(message) {
+            showToast('success', message);
+        }
+        
+        function showError(message) {
+            showToast('error', message);
+        }
+        
+        // Add fade-in animation to elements as they appear
+        document.addEventListener('DOMContentLoaded', function() {
+            const elements = document.querySelectorAll('.fade-in-up');
+            elements.forEach((el, index) => {
+                el.style.animationDelay = `${index * 0.1}s`;
+            });
+            
+            // Add active state to current navigation item
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Global safety: when any modal is fully hidden, ensure body can scroll again
+        document.addEventListener('hidden.bs.modal', () => {
+            // If no modals remain visible, clear scroll locks and stray backdrops
+            if (!document.querySelector('.modal.show')) {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            }
+        });
+
+        // On page load, if something left the body locked previously, unlock it
+        window.addEventListener('load', () => {
+            if (!document.querySelector('.modal.show')) {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                document.querySelectorAll('.modal-backdrop').forEach(el => el.remove());
+            }
+        });
+        
+        // Add smooth scrolling for anchor links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

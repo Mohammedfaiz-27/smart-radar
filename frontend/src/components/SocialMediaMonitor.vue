@@ -158,7 +158,8 @@ let refreshInterval = null
 const fetchLivePosts = async () => {
   loading.value = true
   try {
-    const response = await fetch('http://localhost:8000/api/v1/posts?limit=10')
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const response = await fetch(`${apiBase}/api/v1/posts?limit=10`)
     if (response.ok) {
       const posts = await response.json()
       // Add threat levels and format data

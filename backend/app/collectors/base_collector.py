@@ -340,8 +340,7 @@ class BaseCollector(ABC):
                         await asyncio.sleep(wait_time)
                     else:
                         self.logger.error(f"❌ [{platform_name}][{request_id}] API error: {response.status} after {attempt_duration:.2f}s")
-                        self.logger.debug(f"   Response headers: {dict(response.headers)}")
-                        self.logger.debug(f"   Response body (first 500 chars): {response_text[:500]}...")
+                        self.logger.error(f"   Response body: {response_text[:500]}")
                         if attempt < self.max_retries - 1:
                             self.logger.debug(f"   Retrying in {self.retry_delay}s...")
                             await asyncio.sleep(self.retry_delay)

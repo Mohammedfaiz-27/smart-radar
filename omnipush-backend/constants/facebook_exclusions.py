@@ -1,0 +1,213 @@
+"""
+Facebook Account Exclusions
+This list contains Facebook account names/IDs that should be excluded from all scraping operations.
+"""
+
+# List of Facebook accounts to exclude from scraping (both scraper jobs and research hub)
+# Can include account names or account IDs
+EXCLUDED_FACEBOOK_ACCOUNTS = [
+    # Add Facebook account names or IDs here
+    # Examples:
+    # "Polimer News",
+    # "100064679229816",  # Account ID
+    # "News Today",
+    "809543412242061",
+    "778749595330204",
+    "814121948449604",
+    "818284138030249",
+    "874780335708430",
+    "726754587198065",
+    "734807583052493",
+    "691956130675997",
+    "827198883806187",
+    "820279387830354",
+    "811630415362249",
+    "840754279114097",
+    "845193058669040",
+    "743149745556635",
+    "739144625956435",
+    "753014687902855",
+    "832244349952698",
+    "812679888592212",
+    "716944138174944",
+    "853856131135786",
+    "821126721078280",
+    "773023722565056",
+    "812260491964073",
+    "850143491505086",
+    "723173434222876",
+    "789262134275091",
+    "736545379543894",
+    "870655152787178",
+    "724728310732736",
+    "811694265357700",
+    "853577681162697",
+    "775629395636153",
+    "789941764205949",
+    "747190601818877",
+    "769901106213172",
+    "850792718111433",
+    "836305516222640",
+    "767237793145951",
+    "823146450877532",
+    "810799195450847",
+    "673009292573338",
+    "758203084051735",
+    "767616036439715",
+    "773012375899698",
+    "759441210593713",
+    "766062203263242",
+    "771820036011458",
+    "779072051960000",
+    "771584899375091",
+    "822411400951804",
+    "858271590694610",
+    "774775962391017",
+    "804541112740088",
+    "832009749985884",
+    "747562881781406",
+    "799631396567647",
+    "775124962355104",
+    "731354166737291",
+    "830315886826195",
+    "816037284928112",
+    "772607832598502",
+    "744391552099175",
+    "727703773765672",
+    "820471694481570",
+    "769570186245128",
+    "811371908722234",
+    "831610983360696",
+    "777065485494284",
+    "828042803727910",
+    "mock_fb_page_id",
+    "791033497425552",
+    "826798127182497",
+    "831837846677357",
+    "850554844789251",
+    "769621322907909",
+    "774806389056265",
+    "804633142734535",
+    "858348120690194",
+    "821121594411573",
+    "800738446455899",
+    "861842027002403",
+    "836029689587885",
+    "785095621357430",
+    "812870248570520",
+    "736854942851940",
+    "TiruppurJunction ",
+    "VelloreNews ",
+    "TiruppurUpdates",
+    "TiruvannamalaiNews",
+    "TiruvannamalaiUpdates",
+    "TiruvarurSeidhigal",
+    "Coimbatore North-Voice",
+    "Jolarpet Junction Voice",
+    "Chengalpattu360",
+    "Coimbatoretrending",
+    "Cuddaloreupdates",
+    "Tiruchirapallitrending ",
+    "Kanchi Seithi Maiyam",
+    "Pudukkottai Updates",
+    "NilgirisUpdate",
+    "Nagapattinamupdates",
+    "RamanathapuramUpdates ",
+    "Namma Pudugai",
+    "Mettupalayam ",
+    "nammaramnad",
+    "Erode Today",
+    "ThoothukudiSeithigal",
+    "Ungal Kallakurichi ",
+    "Kanchipuram Buzz",
+    "Ranipet.info",
+    "coimbatoreupdates",
+    "Kinathukadavu's Voice",
+    "TheniNews",
+    "NilgirisJunction",
+    "Sivagangaseemai",
+    "Updatesdindigul",
+    "MayiladuthuraiJunction",
+    "TN58Madurai",
+    "PerambalurInfo",
+    "TirunelveliUpdates",
+    "Tenkasi Junction",
+    "Karur 24x7",
+    "VirudhunagarInfo",
+    "CuddaloreTrending",
+    "ThoothukudiInfo",
+    "Kinathukadavu Explorer",
+    "Daily Kanyakumari",
+    "MayiladuthuraiTalkies",
+    "Karur Breaking",
+    "Sivagangaupdates",
+    "PerambalurUpdatesoffl",
+    "CoimbatoreSouth-People's Power",
+    "Tiruchirappalli Updates",
+    "TirunelveliTalkies",
+    "Salemmapla",
+    "KrishnagiriSeithigal",
+    "Thanjavurtrends",
+    "ThanjavurAtti",
+    "Theni Updates",
+    "Dharmapurijunction",
+    "Erode seithigal ",
+    "VirudhunagarNews",
+    "Dharmapuri Updates",
+    "Ranipetjunction",
+    "Tenkasi Seithigal",
+    "Kavundampalayam Concern",
+    "Villupuram Info",
+    "Pollachi Guardian",
+    "Kallakurichi kural",
+    "MaduraiSeithigal",
+    "Krishnagiritn24 ",
+    "TirupathurJunction",
+    "AriyalurTalkies",
+    "ChennaiTrending",
+    "Mock Facebook Page",
+    "Kanniyakumari Now",
+    "Chengalpattuseidhigal",
+    "Dindigulseithigal",
+    "Selamseithigal",
+    "TiruvarurUpdates",
+    "ThiruvallurJunction",
+    "TirupathurSeithigal",
+    "ThiruvallurSeidhigal ",
+    "Namakkaljunction",
+    "Nagapattinamjunctionofficial",
+    "Ariyalurseidhigal ",
+    "Chennaiseidhigal ",
+    "VelloreTrending",
+    "NamakkalInfo",
+    "Villupuram Talkies",
+]
+
+
+def is_facebook_account_excluded(author_name: str = None, author_id: str = None) -> bool:
+    """
+    Check if a Facebook account should be excluded from scraping.
+
+    Args:
+        author_name: Facebook account name
+        author_id: Facebook account ID
+
+    Returns:
+        True if account should be excluded, False otherwise
+    """
+    if not EXCLUDED_FACEBOOK_ACCOUNTS:
+        return False
+
+    # Check author name (case-insensitive partial match)
+    if author_name:
+        author_name_lower = author_name.lower()
+        for excluded in EXCLUDED_FACEBOOK_ACCOUNTS:
+            if excluded.lower() in author_name_lower or author_name_lower in excluded.lower():
+                return True
+
+    # Check author ID (exact match)
+    if author_id:
+        if str(author_id) in EXCLUDED_FACEBOOK_ACCOUNTS:
+            return True
+
+    return False

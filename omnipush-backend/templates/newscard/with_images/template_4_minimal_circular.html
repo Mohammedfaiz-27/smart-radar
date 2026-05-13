@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="{{lang}}">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    @font-face {
+      font-family: "TAMIL-UNI013";
+      src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+      font-weight: normal;
+      font-style: normal;
+    }
+
+    @font-face {
+      font-family: "Grotesk";
+      src: url("https://techoffee-public-1.s3.us-east-1.amazonaws.com/newsit/Grotesk-Medium.ttf") format("truetype");
+      font-weight: bold;
+      font-style: normal;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      margin: 0;
+    }
+
+    body.lang-ta {
+      font-family: "TAMIL-UNI013", sans-serif;
+    }
+
+    body.lang-en {
+      font-family: "Grotesk", sans-serif;
+      font-weight: bold;
+    }
+
+    .container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      background: #ffffff;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: clamp(50px, 7vw, 80px) clamp(40px, 6vw, 60px);
+    }
+
+    .image-container {
+      position: relative;
+      margin-bottom: clamp(30px, 5vw, 50px);
+    }
+
+    .circular-image {
+      width: clamp(200px, 30vw, 320px);
+      height: clamp(200px, 30vw, 320px);
+      border-radius: 50%;
+      object-fit: cover;
+      border: 8px solid #f1f5f9;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      position: relative;
+      z-index: 2;
+    }
+
+    .image-ring {
+      position: absolute;
+      top: -20px;
+      left: -20px;
+      width: clamp(240px, 33vw, 360px);
+      height: clamp(240px, 33vw, 360px);
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      z-index: 1;
+      opacity: 0.1;
+    }
+
+    .category-container {
+      margin-bottom: clamp(25px, 4vw, 40px);
+    }
+
+    .category-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: white;
+      font-weight: bold;
+      font-size: clamp(14px, 2vw, 18px);
+      padding: 12px 30px;
+      border-radius: 30px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-family: sans-serif;
+      box-shadow: 0 8px 25px rgba(102, 126, 234, 0.25);
+    }
+
+    .content-area {
+      flex-grow: 1;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      margin-bottom: clamp(25px, 4vw, 40px);
+    }
+
+    .headline-wrap {
+      overflow: hidden;
+      min-height: 0;
+    }
+
+    .headline {
+      color: #1f2937;
+      font-size: clamp(24px, 8vw, 85px);
+      line-height: 1.3;
+      font-weight: bold;
+      max-width: 100%;
+    }
+
+    .footer {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: clamp(20px, 3vw, 30px) 0;
+      border-top: 3px solid #e2e8f0;
+      font-family: sans-serif;
+    }
+
+    .source {
+      background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+      color: #334155;
+      padding: 15px 25px;
+      border-radius: 20px;
+      font-weight: bold;
+      font-size: clamp(18px, 3vw, 24px);
+      border: 2px solid #cbd5e1;
+    }
+
+    .date {
+      color: #64748b;
+      font-size: clamp(18px, 3vw, 24px);
+      font-weight: normal;
+    }
+
+    .decorative-dots {
+      position: absolute;
+      top: 60px;
+      right: 80px;
+      display: flex;
+      gap: 15px;
+    }
+
+    .dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      opacity: 0.3;
+    }
+
+    .subtle-pattern {
+      position: absolute;
+      bottom: 60px;
+      left: 80px;
+      width: 100px;
+      height: 100px;
+      background: radial-gradient(circle, rgba(102, 126, 234, 0.05) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+  </style>
+  <title>{{channel_name}} - News</title>
+</head>
+
+<body class="lang-ta">
+  <div class="container">
+    <div class="decorative-dots">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+    <div class="subtle-pattern"></div>
+    
+    <div class="image-container">
+      <div class="image-ring"></div>
+      <img src="{{image_url}}" alt="News Image" class="circular-image" />
+    </div>
+
+    <div class="category-container">
+      <div class="category-badge">{{category}}</div>
+    </div>
+
+    <div class="content-area">
+      <div class="headline-wrap">
+        <div class="headline">{{content}}</div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <div class="source">{{source}}</div>
+      <div class="date">{{date}}</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".headline");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+</html>

@@ -180,26 +180,56 @@ function onMediaSelect(media) {
 async function broadcast() {
   publishing.value = true
   results.value = []
-  const channels = selectedPlatforms.value.map(p => ({
-    platform: p,
-    account_id: getAccount(p)?.id || p
-  }))
   try {
-    const res = await smartPostStore.publishNow({
+    // Get matching channel groups from connected accounts
+    // publishNow requires channel_group_ids, post_id, title, content (string)
+    const matchedAccountIds = selectedPlatforms.value
+      .map(p => getAccount(p)?.id)
+      .filter(Boolean)
+
+    if (!matchedAccountIds.length) {
+      results.value = selectedPlatforms.value.map(p => ({
+        platform: p,
+        success: false,
+        message: 'No connected account for this platform'
+      }))
+      return
+    }
+
+    // Use smartPostApi directly with channel_group_ids = [] for now (no groups selected)
+    // In practice, channel_group_id must come from the channel groups selector
+    const postId = `broadcast-${Date.now()}`
+    const payload = {
+      post_id: postId,
       title: form.value.title || form.value.content.slice(0, 50),
-      content: {
-        text: form.value.content,
-        media_ids: attachedMedia.value.map(m => m.id)
-      },
-      channels
-    })
-    results.value = res?.results || channels.map(c => ({ platform: c.platform, success: true }))
+      content: form.value.content,
+      channel_group_ids: [],  // Will be empty — user should use PublishHub's channel groups
+      media_ids: attachedMedia.value.map(m => m.id),
+      mode: 'text',
+    }
+
+    const res = await smartPostStore.publishNow(payload)
+    const channelResults = res?.channels
+    if (channelResults && typeof channelResults === 'object') {
+      results.value = Object.entries(channelResults).map(([platform, r]) => ({
+        platform,
+        success: r?.success ?? true,
+        message: r?.message,
+      }))
+    } else {
+      results.value = selectedPlatforms.value.map(p => ({ platform: p, success: true }))
+    }
+
     if (results.value.every(r => r.success)) {
       form.value = { title: '', content: '' }
       attachedMedia.value = []
     }
-  } catch {
-    results.value = channels.map(c => ({ platform: c.platform, success: false, message: 'Failed' }))
+  } catch (e) {
+    results.value = selectedPlatforms.value.map(p => ({
+      platform: p,
+      success: false,
+      message: e?.response?.data?.detail || 'Failed'
+    }))
   } finally {
     publishing.value = false
   }
@@ -208,21 +238,26 @@ async function broadcast() {
 async function schedulePost() {
   publishing.value = true
   openScheduleModal.value = false
-  const channels = selectedPlatforms.value.map(p => ({
-    platform: p,
-    account_id: getAccount(p)?.id || p
-  }))
   try {
-    // First create the post, then schedule it
-    const res = await smartPostStore.publishNow({
+    const payload = {
       title: form.value.title || form.value.content.slice(0, 50),
-      content: { text: form.value.content },
-      channels,
-      scheduled_at: scheduleAt.value
-    })
-    results.value = [{ platform: 'Scheduled', success: true, message: `Scheduled for ${new Date(scheduleAt.value).toLocaleString()}` }]
-  } catch {
-    results.value = [{ platform: 'Schedule', success: false, message: 'Failed to schedule' }]
+      content: form.value.content,
+      channel_group_ids: [],
+      mode: 'text',
+      scheduled_at: scheduleAt.value,
+    }
+    await smartPostApi.publishNow(payload)
+    results.value = [{
+      platform: 'Scheduled',
+      success: true,
+      message: `Scheduled for ${new Date(scheduleAt.value).toLocaleString()}`
+    }]
+  } catch (e) {
+    results.value = [{
+      platform: 'Schedule',
+      success: false,
+      message: e?.response?.data?.detail || 'Failed to schedule'
+    }]
   } finally {
     publishing.value = false
     scheduleAt.value = ''

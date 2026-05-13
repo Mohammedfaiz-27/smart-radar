@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  mongodb:
+    image: mongo:7.0
+    container_name: smart-radar-mongodb
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: smart_radar
+    volumes:
+      - mongodb_data:/data/db
+    expose:
+      - "27017"
+
+  # SMART RADAR backend — intelligence, posts, clusters
   backend:
     build: ./backend
     container_name: smart-radar-backend
@@ -9,7 +23,22 @@ services:
       - "8000"
     env_file:
       - ./backend/.env
+    depends_on:
+      - mongodb
 
+  # OmniPush backend — publishing, drafts, media, analytics
+  omnipush:
+    build: ./omnipush-backend
+    container_name: omnipush-backend
+    restart: always
+    expose:
+      - "8001"
+    env_file:
+      - ./omnipush-backend/.env
+    environment:
+      - PORT=8001
+
+  # Frontend — serves Vue app + proxies to both backends
   frontend:
     build: ./frontend
     container_name: smart-radar-frontend
@@ -18,3 +47,7 @@ services:
       - "80:80"
     depends_on:
       - backend
+      - omnipush
+
+volumes:
+  mongodb_data:

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>News Card - Content Left, Accent Right (No Image)</title>
+<style>
+  @font-face {
+    font-family: "TAMIL-UNI013";
+    src: url("https://newsit-assets.s3.ap-south-1.amazonaws.com/template/TAMIL-UNI013.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+  }
+
+  :root{
+    --accent-width: 30%;
+    --content-width: 70%;
+    --pad: 48px;
+    --gap: 22px;
+    --min-title: 18px;
+    --max-title: 128px;
+    --accent: #16a34a;        /* green accent bar */
+    --bg: #ffffff;
+    --text: #0f172a;
+    --muted: #64748b;
+    --radius: 18px;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    font-family: "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", sans-serif;
+    background: #f1f5f9;
+    overflow: hidden;
+  }
+  body.lang-ta { direction: ltr; }
+
+  .container {
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    background: var(--bg);
+    box-shadow: 0 24px 60px -20px rgba(2,6,23,0.25);
+    overflow: hidden;
+    box-sizing: border-box;
+  }
+
+  .content-section {
+    width: var(--content-width);
+    display: grid;
+    grid-template-rows: 1fr auto;
+    padding: var(--pad);
+    gap: var(--gap);
+    position: relative;
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  }
+
+  /* Accent bar on the far left */
+  .accent-bar {
+    position: absolute;
+    left: 0;
+    top: 0; bottom: 0;
+    width: 10px;
+    background: linear-gradient(180deg, var(--accent), #22c55e);
+  }
+
+  .headline-wrap {
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .headline {
+    margin: 0;
+    font-weight: 900;
+    color: var(--text);
+    line-height: 1.08;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    font-family: "TAMIL-UNI013", "Inter", "Helvetica Neue", Arial, "Noto Sans Tamil", sans-serif;
+  }
+
+  .footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 14px;
+    border-top: 1.5px solid #e2e8f0;
+    color: var(--muted);
+    font-size: 18px;
+    font-weight: 600;
+    gap: 16px;
+    min-height: 28px;
+  }
+
+  .source {
+    color: var(--accent);
+    font-weight: 800;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 55%;
+  }
+  .date {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 40%;
+  }
+
+  .accent-section {
+    width: var(--accent-width);
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, var(--accent), #22c55e);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Corner category tag on accent section */
+  .category-badge {
+    position: absolute;
+    right: 24px;
+    bottom: 24px;
+    background: rgba(255,255,255,0.95);
+    color: var(--accent);
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    font-size: 14px;
+    border: 1px solid rgba(255,255,255,0.3);
+    max-width: calc(100% - 48px);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .category-text {
+    color: white;
+    font-weight: 800;
+    font-size: 18px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    text-align: center;
+    transform: rotate(-90deg);
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body class="lang-ta">
+  <div class="container">
+    <div class="content-section">
+      <div class="accent-bar"></div>
+      <div class="headline-wrap">
+        <div class="headline">{{content}}</div>
+      </div>
+      <div class="footer">
+        <div class="source">{{source}}</div>
+        <div class="date">{{date}}</div>
+      </div>
+    </div>
+
+    <div class="accent-section">
+      <div class="category-text">{{category}}</div>
+      <div class="category-badge">{{category}}</div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/gh/kishorek/dynamic-font-size-js@refs/heads/main/fontfit.js"></script>
+  <script>
+    const container = document.querySelector(".headline-wrap");
+    const headline = document.querySelector(".headline");
+    const controller = window.fitFontToContainer(headline, container, {
+      minPx: 8,
+      maxPx: 80,
+    });
+    requestAnimationFrame(() => controller.refit());
+  </script>
+</body>
+</html>
