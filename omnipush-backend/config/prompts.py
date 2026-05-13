@@ -566,7 +566,7 @@ Output language: Tamil
             formatted_pages = []
             for account in accounts:
                 # account_info = f"- {account.get('name', 'Unknown')} (ID: {account.get('id', 'N/A')})"
-                account_info = f"- {account.get('name', '').replace(" ", "").lower().strip()}"
+                account_info = f"- {account.get('name', '').replace(' ', '').lower().strip()}"
                 # if account.get('platform'):
                 #     account_info += f" [Platform: {account['platform']}]"
                 # if account.get('tone') and account['tone'] != 'professional':
