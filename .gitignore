@@ -213,3 +213,9 @@ config/local.py
 
 # Redis dump
 dump.rdb
+
+# OmniPush frontend app (separate repo / large build artifacts)
+omnipush-app/
+
+# Generated news card images (runtime output, not source)
+omnipush-backend/static/generated-newscards/

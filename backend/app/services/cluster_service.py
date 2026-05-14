@@ -106,7 +106,13 @@ class ClusterService:
     async def delete_cluster(self, cluster_id: str) -> bool:
         pool = get_database()
         async with pool.acquire() as conn:
-            result = await conn.execute(
-                "DELETE FROM clusters WHERE id = $1::uuid", cluster_id
-            )
+            async with conn.transaction():
+                # Delete all posts belonging to this cluster first
+                await conn.execute(
+                    "DELETE FROM posts_table WHERE cluster_id = $1", cluster_id
+                )
+                # Then delete the cluster itself
+                result = await conn.execute(
+                    "DELETE FROM clusters WHERE id = $1::uuid", cluster_id
+                )
         return result == "DELETE 1"

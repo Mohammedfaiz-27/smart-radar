@@ -63,6 +63,7 @@ class PublishNowRequest(BaseModel):
     headline: Optional[str] = None  # User-provided headline (30-50 chars) for newscard modes
     background_processing: Optional[bool] = True  # Enable background processing by default
     source_image_url: Optional[str] = None  # Original reshare post image for LLM vision analysis (repost flow only)
+    template_name: Optional[str] = None  # Specific news card template to render
 
 
 class PublishNowResponse(BaseModel):
@@ -763,11 +764,12 @@ async def _publish_with_mode(
         channels=[],
         publish_text=True,
         publish_image=True,
-        generate_news_card=True if request.mode in ["news_card", "newscard_with_image"] else False,  # Don't generate newscards if we have media files
+        generate_news_card=True if request.mode in ["news_card", "newscard_with_image"] else False,
         facebook_access_token=os.getenv("FB_LONG_LIVED_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN"),
         periskope_api_key=os.getenv("PERISKOPE_API_KEY"),
         channel_group_id=first_channel_group,
-        social_accounts=social_accounts
+        social_accounts=social_accounts,
+        template_name=request.template_name
     )
     
     publish_service = PublishService(publish_config)
@@ -1105,7 +1107,7 @@ async def publish_post_now(
         # If no channel groups specified, fall back to all tenant channel groups
         if not channel_group_ids:
             cg_resp = ctx.table('channel_groups').select('id').eq(
-                'tenant_id', ctx.tenant_id
+                'is_active', True
             ).execute()
             channel_group_ids = [row['id'] for row in (cg_resp.data or [])]
 
@@ -1132,13 +1134,25 @@ async def publish_post_now(
                     social_account_ids = channel_group.get('social_account_ids', [])
                     all_account_ids.update(social_account_ids)
 
-            # Fetch all unique social accounts
+            # Fetch all unique social accounts — try by internal UUID first,
+            # then fall back to external account_id for groups created with platform IDs
             if all_account_ids:
+                id_list = list(all_account_ids)
                 accounts_response = ctx.table('social_accounts').select(
                     'id, platform, account_name, account_id, status, page_id, periskope_id, auto_image_search, access_token'
-                ).in_('id', list(all_account_ids)).eq('tenant_id', current_user.tenant_id).execute()
+                ).in_('id', id_list).execute()
 
                 social_accounts = accounts_response.data or []
+
+                # If UUID lookup didn't find all accounts, also try by external account_id
+                if len(social_accounts) < len(id_list):
+                    found_uuids = {a['id'] for a in social_accounts}
+                    unmatched = [aid for aid in id_list if aid not in found_uuids]
+                    if unmatched:
+                        fallback = ctx.table('social_accounts').select(
+                            'id, platform, account_name, account_id, status, page_id, periskope_id, auto_image_search, access_token'
+                        ).in_('account_id', unmatched).execute()
+                        social_accounts.extend(fallback.data or [])
 
             # Initialize background task service
             background_service = get_background_task_service()

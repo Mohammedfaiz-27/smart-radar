@@ -66,11 +66,11 @@ def get_beat_schedule():
             "schedule": 24.0 * 60 * 60,  # Every 24 hours
         }
     
-    # Weekly cleanup (conditional)
+    # Daily cleanup — wipe all posts every 24 hours so fresh data replaces old
     if WEEKLY_CLEANUP_ENABLED:
-        schedule["cleanup-old-data-weekly"] = {
+        schedule["cleanup-old-data-daily"] = {
             "task": "app.tasks.monitoring_tasks.cleanup_old_data",
-            "schedule": 7.0 * 24 * 60 * 60,  # Every 7 days
+            "schedule": 24.0 * 60 * 60,  # Every 24 hours
         }
     
     return schedule

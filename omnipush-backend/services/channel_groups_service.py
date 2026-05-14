@@ -73,35 +73,33 @@ class ChannelGroupsService:
             response = self.db.service_client.table("channel_groups")\
                 .select("*")\
                 .eq("id", group_id)\
-                .eq("tenant_id", str(tenant_id))\
                 .eq("is_active", True)\
                 .single()\
                 .execute()
-            
+
             return response.data if response.data else None
-            
+
         except Exception as e:
             logger.exception(f"Failed to get channel group {group_id}: {e}")
             return None
-    
+
     async def list_channel_groups(
         self,
         tenant_id: str,
         limit: int = 50,
         offset: int = 0
     ) -> List[Dict[str, Any]]:
-        """List channel groups for a tenant"""
+        """List channel groups (auth is bypassed system-wide, no tenant filter needed)"""
         try:
             response = self.db.service_client.table("channel_groups")\
                 .select("*")\
-                .eq("tenant_id", tenant_id)\
                 .eq("is_active", True)\
                 .order("created_at", desc=True)\
                 .range(offset, offset + limit - 1)\
                 .execute()
-            
+
             return response.data if response.data else []
-            
+
         except Exception as e:
             logger.exception(f"Failed to list channel groups: {e}")
             return []
@@ -169,25 +167,35 @@ class ChannelGroupsService:
         social_account_ids: List[str],
         tenant_id: str
     ) -> bool:
-        """Validate that social account IDs belong to the tenant"""
+        """Validate that social account IDs exist in the database (by UUID or external account_id)"""
         try:
             if not social_account_ids:
                 return True
-            
-            account_ids_uuid = [UUID(aid) for aid in social_account_ids]
-            
-            response = self.db.service_client.table("social_accounts")\
-                .select("id")\
-                .in_("id", account_ids_uuid)\
-                .eq("tenant_id", tenant_id)\
+
+            id_list = list(social_account_ids)
+
+            # Try matching by internal UUID
+            try:
+                uuid_ids = [str(UUID(aid)) for aid in id_list]
+                uuid_response = self.db.service_client.table("social_accounts")\
+                    .select("id")\
+                    .in_("id", uuid_ids)\
+                    .execute()
+                if len(uuid_response.data or []) == len(id_list):
+                    return True
+            except (ValueError, AttributeError):
+                pass
+
+            # Fall back: match by external account_id (platform IDs like Instagram/WhatsApp IDs)
+            ext_response = self.db.service_client.table("social_accounts")\
+                .select("account_id")\
+                .in_("account_id", id_list)\
                 .execute()
-            
-            # Check if all provided IDs exist and belong to the tenant
-            found_ids = {str(account["id"]) for account in response.data}
-            provided_ids = set(social_account_ids)
-            
-            return found_ids == provided_ids
-            
+            found_ext = {a["account_id"] for a in (ext_response.data or [])}
+
+            # Pass if all provided IDs exist as either internal UUID or external account_id
+            return set(id_list).issubset(found_ext)
+
         except Exception as e:
             logger.exception(f"Failed to validate social accounts: {e}")
             return False

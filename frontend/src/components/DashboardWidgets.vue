@@ -99,7 +99,7 @@
   </div>
 
   <!-- Widget Details Modal -->
-  <WidgetDetailsModal 
+  <WidgetDetailsModal
     :is-open="modalState.isOpen"
     :widget-type="modalState.widgetType"
     @close="closeModal"
@@ -153,27 +153,27 @@ const getNegativePercentage = () => {
 const fetchDashboardStats = async () => {
   try {
     loading.value = true
-    
+
     // Always calculate from posts data for accurate results
     await postsStore.fetchPosts()
-    
+
     const posts = postsStore.posts
     const ownPosts = postsStore.ownPosts
     const competitorPosts = postsStore.competitorPosts
     const threatPosts = postsStore.threatPosts
-    
+
     console.log('📊 Calculating dashboard stats from', posts.length, 'posts')
     console.log('📊 Own posts:', ownPosts.length, 'Competitor posts:', competitorPosts.length, 'Threat posts:', threatPosts.length)
-    
+
     // Calculate sentiment metrics from posts_table sentiment field
     let positiveCount = 0
     let negativeCount = 0
     let opportunitiesCount = 0
-    
+
     posts.forEach(post => {
       // Use direct sentiment field from posts_table
       const sentiment = post.sentiment || 'neutral'
-      
+
       // Count own cluster sentiments (for positive/negative widgets)
       if (post.cluster_type === 'own') {
         if (sentiment === 'positive') {
@@ -182,13 +182,13 @@ const fetchDashboardStats = async () => {
           negativeCount++
         }
       }
-      
+
       // Count opportunities (competitor negative sentiment)
       if (post.cluster_type === 'competitor' && sentiment === 'negative') {
         opportunitiesCount++
       }
     })
-    
+
     stats.value = {
       posts_today: posts.length,
       positive_posts: positiveCount,
@@ -198,9 +198,9 @@ const fetchDashboardStats = async () => {
       competitor_posts: competitorPosts.length,
       threat_posts: threatPosts.length
     }
-    
+
     console.log('📊 Dashboard stats calculated:', stats.value)
-    
+
   } catch (error) {
     console.error('Error fetching dashboard stats:', error)
     stats.value = {
@@ -231,10 +231,10 @@ const closeModal = () => {
 // Initialize on mount
 onMounted(() => {
   fetchDashboardStats()
-  
+
   // Refresh stats every 30 seconds
   const interval = setInterval(fetchDashboardStats, 30000)
-  
+
   // Cleanup interval on unmount
   return () => clearInterval(interval)
 })

@@ -100,24 +100,27 @@ class PipelineOrchestrator:
             print(f"\n--- Collecting from {platform_name.upper()} ---")
 
             # Get platform-specific config
+            from app.models.cluster import PlatformConfig
             if platform_config:
                 config = getattr(platform_config, platform_name, None)
                 if config:
                     if not config.enabled:
-                        print(f"⏸️ Skipping {platform_name} (disabled in configuration)")
+                        print(f"Skipping {platform_name} (disabled in configuration)")
                         return None
                     else:
                         print(f"✅ {platform_name} enabled")
                 else:
-                    # Platform not configured, use default config
-                    from app.models.cluster import PlatformConfig
                     config = PlatformConfig()
                     print(f"✅ {platform_name} using default config (not configured)")
             else:
-                # No platform config at all, use default
-                from app.models.cluster import PlatformConfig
                 config = PlatformConfig()
                 print(f"✅ {platform_name} using default config (no platform_config)")
+
+            # Enforce current batch/volume defaults regardless of what's stored in old DB records
+            if config.max_results < 100:
+                config = config.copy(update={"max_results": 1000})
+            if not hasattr(config, "batch_size") or config.batch_size < 50:
+                config = config.copy(update={"batch_size": 200, "batch_delay": 5.0})
 
             platform_success = False
 

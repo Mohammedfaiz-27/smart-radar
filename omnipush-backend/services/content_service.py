@@ -113,7 +113,7 @@ class ContentService:
         # return fitted_content.strip()
         return content.strip()
 
-    async def generate_exact_newscard_template(self, content: str, channel_name: str = None, tone: str = "professional", tenant_id: str = None, channel_id: str = None, image_url: str = None, headline: str = None, district: str = None) -> str:
+    async def generate_exact_newscard_template(self, content: str, channel_name: str = None, tone: str = "professional", tenant_id: str = None, channel_id: str = None, image_url: str = None, headline: str = None, district: str = None, template_name: str = None) -> str:
         """Generate HTML using rotating newscard templates with content fitting and proper template assignment support"""
 
         # Import the template service
@@ -142,7 +142,8 @@ class ContentService:
                 image_url=image_url,
                 headline=headline,
                 district=district,
-                db_client=db_client
+                db_client=db_client,
+                template_name=template_name
             )
         except Exception as e:
             logger.error(f"Error using async template rotation system: {e}")
@@ -157,7 +158,8 @@ class ContentService:
                     image_url=image_url,
                     headline=headline,
                     district=district,
-                    db_client=db_client
+                    db_client=db_client,
+                    template_name=template_name
                 )
             except Exception as e2:
                 logger.error(f"Error using sync template rotation system: {e2}")
@@ -506,138 +508,65 @@ class ContentService:
             # Write HTML content to temp file
             temp_html_path.write_text(html_content, encoding="utf-8")
 
-            try:
-                async with async_playwright() as p:
-                    # Launch browser
-                    browser = await p.chromium.launch()
-                    page = await browser.new_page()
-
-                    # Set larger viewport to accommodate body padding/margins
-                    await page.set_viewport_size({"width": 1200, "height": 1200})
-
-                    # Navigate to the HTML file
-                    await page.goto(f"file://{temp_html_path}", wait_until="networkidle")
-
-                    # Wait for fonts to load properly (especially important for Tamil/Unicode fonts)
-                    await page.evaluate("document.fonts.ready")
-
-                    # CRITICAL: Wait for ALL images to finish loading (especially S3 images)
-                    # This fixes the issue where follow.png and other S3 images don't load
-                    # Includes timeout to prevent hanging indefinitely
-                    # Handles templates with no images or broken image tags
-                    await page.evaluate("""
+            def _playwright_screenshot(html_path_str: str, screenshot_path_str: str):
+                """Run Playwright synchronously in a thread to avoid Windows event loop issues."""
+                from playwright.sync_api import sync_playwright
+                with sync_playwright() as p:
+                    browser = p.chromium.launch()
+                    page = browser.new_page()
+                    page.set_viewport_size({"width": 1200, "height": 1200})
+                    page.goto(f"file://{html_path_str}", wait_until="networkidle")
+                    page.evaluate("document.fonts.ready")
+                    page.evaluate("""
                     () => {
                         return new Promise((resolve) => {
                             const allImages = Array.from(document.images);
-
-                            // Filter out images that shouldn't be waited for
                             const images = allImages.filter(img => {
-                                // Skip images with empty or invalid src
-                                if (!img.src || img.src === '' || img.src === 'about:blank') {
-                                    console.log('Skipping image with empty/invalid src');
-                                    return false;
-                                }
-
-                                // Skip hidden images (display: none or visibility: hidden)
+                                if (!img.src || img.src === '' || img.src === 'about:blank') return false;
                                 const style = window.getComputedStyle(img);
-                                if (style.display === 'none' || style.visibility === 'hidden') {
-                                    console.log('Skipping hidden image:', img.src);
-                                    return false;
-                                }
-
+                                if (style.display === 'none' || style.visibility === 'hidden') return false;
                                 return true;
                             });
-
-                            console.log(`Waiting for ${images.length} images to load (${allImages.length} total img tags)`);
-
-                            if (images.length === 0) {
-                                console.log('No images to wait for, proceeding...');
-                                resolve();
-                                return;
-                            }
-
+                            if (images.length === 0) { resolve(); return; }
                             let loadedCount = 0;
-                            const totalImages = images.length;
                             let resolved = false;
-
-                            // Set timeout to prevent hanging indefinitely (5 seconds is enough for most images)
-                            const timeout = setTimeout(() => {
-                                if (!resolved) {
-                                    console.warn(`Image loading timeout: ${loadedCount}/${totalImages} images loaded`);
-                                    resolved = true;
-                                    resolve();
-                                }
-                            }, 5000);
-
+                            const timeout = setTimeout(() => { if (!resolved) { resolved = true; resolve(); } }, 5000);
                             const checkComplete = () => {
                                 loadedCount++;
-                                console.log(`Image ${loadedCount}/${totalImages} loaded`);
-                                if (loadedCount === totalImages && !resolved) {
-                                    console.log('All images loaded successfully');
-                                    resolved = true;
-                                    clearTimeout(timeout);
-                                    resolve();
-                                }
+                                if (loadedCount === images.length && !resolved) { resolved = true; clearTimeout(timeout); resolve(); }
                             };
-
-                            images.forEach((img, index) => {
-                                if (img.complete && img.naturalWidth !== 0) {
-                                    // Image already loaded
-                                    console.log(`Image ${index + 1} already loaded:`, img.src);
-                                    checkComplete();
-                                } else {
-                                    // Wait for image to load
-                                    console.log(`Waiting for image ${index + 1}:`, img.src);
-                                    img.addEventListener('load', () => {
-                                        console.log(`Image ${index + 1} loaded successfully`);
-                                        checkComplete();
-                                    });
-                                    img.addEventListener('error', () => {
-                                        console.warn(`Image ${index + 1} failed to load:`, img.src);
-                                        checkComplete(); // Continue even if image fails
-                                    });
+                            images.forEach(img => {
+                                if (img.complete && img.naturalWidth !== 0) { checkComplete(); }
+                                else {
+                                    img.addEventListener('load', checkComplete);
+                                    img.addEventListener('error', checkComplete);
                                 }
                             });
                         });
                     }
-                """)
-
-                    # Additional timeout to ensure all rendering is complete
-                    await page.wait_for_timeout(10000)
-
-                    # Get the card container element position and size
-                    # Most templates use .card-container, .container, or body as main container
+                    """)
+                    page.wait_for_timeout(10000)
                     card_selector = ".card-container, .container, body > div:first-child"
-
                     try:
-                        # Try to get the bounding box of the card container
-                        card_element = await page.query_selector(card_selector)
+                        card_element = page.query_selector(card_selector)
                         if card_element:
-                            bounding_box = await card_element.bounding_box()
+                            bounding_box = card_element.bounding_box()
                             if bounding_box:
-                                # Use clip to capture exactly the card area
-                                await page.screenshot(
-                                    path=str(temp_screenshot_path),
-                                    clip={
-                                        'x': bounding_box['x'],
-                                        'y': bounding_box['y'],
-                                        'width': min(bounding_box['width'], 1080),
-                                        'height': min(bounding_box['height'], 1080)
-                                    }
-                                )
+                                page.screenshot(path=screenshot_path_str, clip={
+                                    'x': bounding_box['x'], 'y': bounding_box['y'],
+                                    'width': min(bounding_box['width'], 1080),
+                                    'height': min(bounding_box['height'], 1080)
+                                })
                             else:
-                                # Fallback if bounding box not found
-                                await page.screenshot(path=str(temp_screenshot_path), clip={'x': 0, 'y': 0, 'width': 1080, 'height': 1080})
+                                page.screenshot(path=screenshot_path_str, clip={'x': 0, 'y': 0, 'width': 1080, 'height': 1080})
                         else:
-                            # Fallback if element not found
-                            await page.screenshot(path=str(temp_screenshot_path), clip={'x': 0, 'y': 0, 'width': 1080, 'height': 1080})
-                    except Exception as clip_error:
-                        logger.warning(f"Failed to use clip region, falling back to full page: {clip_error}")
-                        # Final fallback to full_page
-                        await page.screenshot(path=str(temp_screenshot_path), full_page=True)
+                            page.screenshot(path=screenshot_path_str, clip={'x': 0, 'y': 0, 'width': 1080, 'height': 1080})
+                    except Exception:
+                        page.screenshot(path=screenshot_path_str, full_page=True)
+                    browser.close()
 
-                    # Close browser
-                    await browser.close()
+            try:
+                await asyncio.to_thread(_playwright_screenshot, str(temp_html_path), str(temp_screenshot_path))
 
                 # Read screenshot content
                 screenshot_content = temp_screenshot_path.read_bytes()
@@ -797,7 +726,7 @@ class ContentService:
         }
 
 
-async def generate_news_card_from_text(title: str, content: str, tenant_id: str = None, content_adaptation: Dict[str, Any] = None, channel_id: str = None, image_url: str = None, headline: str = None, district: str = None) -> Dict[str, Any]:
+async def generate_news_card_from_text(title: str, content: str, tenant_id: str = None, content_adaptation: Dict[str, Any] = None, channel_id: str = None, image_url: str = None, headline: str = None, district: str = None, template_name: str = None) -> Dict[str, Any]:
     """
     Generate news card image from text content.
 
@@ -906,7 +835,8 @@ async def generate_news_card_from_text(title: str, content: str, tenant_id: str 
                 channel_id=channel_id,
                 image_url=image_url,
                 headline=headline,
-                district=district
+                district=district,
+                template_name=template_name
             )
             logger.info("Successfully generated HTML using exact newscard template")
             

@@ -353,76 +353,86 @@ Do NOT use markdown formatting, do NOT use ```json```, just return the plain JSO
             fallback_responses = self._generate_intelligent_fallback(post_content, tone, language)
             return fallback_responses
 
+    async def _get_cluster_name(self, cluster_id: str) -> str:
+        """Fetch cluster name from database to use as organization context."""
+        try:
+            pool = get_database()
+            async with pool.acquire() as conn:
+                row = await conn.fetchrow(
+                    "SELECT name FROM clusters WHERE id = $1::uuid", cluster_id
+                )
+            return row["name"] if row else ""
+        except Exception:
+            return ""
+
     async def _generate_gemini_rest_primary(self, original_post, tone="Professional", language="Tamil") -> dict:
         """Generate AI response using Gemini REST API (primary method) with OpenAI fallback"""
 
-        # Extract post data - handle both object and dict post formats
+        # Extract post data
         if isinstance(original_post, dict):
             post_platform = original_post.get('platform', 'Unknown')
             post_author = original_post.get('author_username', 'Unknown')
             post_content = original_post.get('post_text', '') or original_post.get('content', '')
-            post_sentiment = original_post.get('sentiment_label', 'neutral')
-            post_sentiment_score = original_post.get('sentiment_score', 0.0)
+            cluster_id = original_post.get('cluster_id', '')
         else:
             post_platform = getattr(original_post, 'platform', 'Unknown')
+            if hasattr(post_platform, 'value'):
+                post_platform = post_platform.value
             post_author = getattr(original_post, 'author_username', 'Unknown')
             post_content = getattr(original_post, 'post_text', '') or getattr(original_post, 'content', '')
-            post_sentiment = getattr(original_post, 'sentiment', 'neutral')
-            post_sentiment_score = getattr(original_post, 'sentiment_score', 0.0)
+            cluster_id = str(getattr(original_post, 'cluster_id', '') or '')
 
-        # Construct the Election Commission Official Prompt
-        prompt = f"""Persona
-You are the official communication channel for the Election Commission of India, Tamil Nadu. Your voice is authoritative, impartial, and formal. Your primary objective is to disseminate accurate information, clarify electoral procedures, and ensure adherence to the Model Code of Conduct. You do not engage in political debates or take sides. Your communication is always factual, transparent, and in the public interest.
+        # Get organization name from cluster
+        org_name = await self._get_cluster_name(cluster_id) if cluster_id else ""
 
-CRITICAL PRELIMINARY STEP: Information Verification
-Before you draft a response, you MUST perform an internal information verification based on the post in question. Access your knowledge base for the following:
-1. Identify the Core Issue: What is the central claim, question, or allegation in the post concerning the election process, a candidate's/party's action, or the ECI's conduct?
-2. Consult Official ECI Records & Rules: Cross-reference the issue with the Representation of the People Act, 1951, the Model Code of Conduct (MCC), official ECI circulars, press releases, and historical electoral data.
-3. Formulate a Factual Statement: Prepare a clear, neutral, and verifiable statement of fact based on the official rules and records that directly addresses the issue raised in the post.
+        # Build tone instruction
+        tone_map = {
+            "professional": "formal, measured, and authoritative — acknowledge concerns directly and offer a clear resolution path",
+            "empathetic": "warm, understanding, and human — show genuine care and commit to resolving the issue",
+            "assertive": "confident and direct — stand by the brand while addressing the concern firmly",
+            "apologetic": "sincere and remorseful — take ownership of the issue and promise concrete action",
+            "informative": "helpful and factual — provide clear information and next steps to resolve the issue",
+        }
+        tone_instruction = tone_map.get(tone.lower().split()[0], tone_map["professional"])
 
-Communication Protocol (You MUST use your verified information to execute this structure)
-1. Official Opening: Begin with a formal and direct statement that acknowledges the subject matter without validating any misinformation (e.g., "It has come to the notice of the Election Commission...", "For the information of the public and all stakeholders...").
-2. Factual Clarification: State the verified fact or the relevant rule from the ECI's regulations. Use precise, unambiguous, and official language. If applicable, cite the specific rule or section of the Model Code of Conduct.
-3. Provide Context and Guidance: Briefly explain the regulation or process to ensure public understanding and transparency. Frame the information to educate the public on their rights and the responsibilities of political parties and candidates.
-4. Concluding Directive: Conclude with a formal directive, a reminder to political parties and the public to uphold electoral laws, or a link to official ECI resources for further information. The conclusion should reinforce the ECI's commitment to free and fair elections.
+        org_context = f"You represent **{org_name}**. " if org_name else "You represent the organization being mentioned. "
 
-Your Task
-You are to draft a response to the following post. Generate three distinct response options adhering strictly to your Persona and the Communication Protocol, using the facts you have verified.
+        prompt = f"""You are a social media manager responding to a post on behalf of your organization.
 
-CONTEXT (The post to respond to):
+{org_context}Your job is to craft a response that is relevant, genuine, and directly addresses the specific content of the post below.
+
+POST DETAILS:
 Platform: {post_platform}
-Author: {post_author}
-Content: {post_content}
+Author: @{post_author}
+Post Content: {post_content}
 
-FINAL INSTRUCTIONS:
-1. Your tone MUST be Professional and Governmental.
-2. The language must be {language}, using formal, official terminology suitable for a government body.
-3. Each response must be clear, concise, and suitable for an official public announcement. Do NOT use any emojis.
-4. CRITICAL OUTPUT FORMAT: You MUST return ONLY a valid JSON object. No other text before or after. Example format:
-{{"option1": "Response text here", "option2": "Response text here", "option3": "Response text here"}}
-Do NOT use markdown formatting, do NOT use ```json```, just return the plain JSON object."""
+RESPONSE REQUIREMENTS:
+1. Read the post carefully and understand EXACTLY what the person is saying, asking, or complaining about.
+2. Your response must directly address the specific issue raised in this post — do NOT give a generic reply.
+3. Tone: Be {tone_instruction}.
+4. Language: Write entirely in {language}.
+5. Keep each response concise (2-4 sentences), suitable for a social media reply.
+6. Do NOT use emojis.
+7. Generate 3 distinct response options — each should approach the issue differently (e.g., one focused on empathy, one on resolution, one on information).
+
+CRITICAL OUTPUT FORMAT: Return ONLY a valid JSON object, no other text:
+{{"option1": "response text", "option2": "response text", "option3": "response text"}}"""
 
         post_id = original_post.get('id', 'Unknown') if isinstance(original_post, dict) else getattr(original_post, 'id', 'Unknown')
         logger.info(f"=== GENERATING RESPONSE (GEMINI REST PRIMARY) ===")
-        logger.info(f"Post ID: {post_id}")
-        logger.info(f"Tone: {tone}, Language: {language}")
+        logger.info(f"Post ID: {post_id}, Org: {org_name}, Tone: {tone}, Language: {language}")
         logger.info(f"Post Content: {post_content}")
-        logger.info(f"Prompt length: {len(prompt)} characters")
 
-        # Try Gemini REST API first (primary method)
         try:
             logger.info("🔄 Attempting Gemini REST API (primary method)...")
             return await self._gemini_rest_api_direct(prompt)
         except Exception as gemini_error:
             logger.warning(f"Gemini REST API failed: {gemini_error}")
             logger.info("🔄 Falling back to OpenAI API...")
-            
-            # Fallback to OpenAI
             try:
                 return await self._generate_openai_response(original_post, tone, language)
             except Exception as openai_error:
                 logger.error(f"OpenAI API also failed: {openai_error}")
-                logger.warning("Using intelligent fallback responses")
                 return self._generate_intelligent_fallback(post_content, tone, language)
 
     async def _gemini_rest_api_direct(self, prompt: str) -> dict:
@@ -518,64 +528,58 @@ Do NOT use markdown formatting, do NOT use ```json```, just return the plain JSO
             raise ValueError(f"Gemini REST API call failed: {e}")
 
     async def _generate_openai_response(self, original_post, tone="Professional", language="Tamil") -> dict:
-        """Generate AI response using OpenAI API (primary method)"""
+        """Generate AI response using OpenAI API (fallback method)"""
 
         if not self.openai_client:
-            logger.error("OpenAI client not initialized - falling back to Gemini")
-            return await self._generate_ai_response_rest_first(original_post, tone, language)
+            raise ValueError("OpenAI client not initialized")
 
-        # Extract post data - handle both object and dict post formats
+        # Extract post data
         if isinstance(original_post, dict):
             post_platform = original_post.get('platform', 'Unknown')
             post_author = original_post.get('author_username', 'Unknown')
             post_content = original_post.get('post_text', '') or original_post.get('content', '')
-            post_sentiment = original_post.get('sentiment_label', 'neutral')
-            post_sentiment_score = original_post.get('sentiment_score', 0.0)
+            cluster_id = original_post.get('cluster_id', '')
         else:
             post_platform = getattr(original_post, 'platform', 'Unknown')
+            if hasattr(post_platform, 'value'):
+                post_platform = post_platform.value
             post_author = getattr(original_post, 'author_username', 'Unknown')
             post_content = getattr(original_post, 'post_text', '') or getattr(original_post, 'content', '')
-            post_sentiment = getattr(original_post, 'sentiment', 'neutral')
-            post_sentiment_score = getattr(original_post, 'sentiment_score', 0.0)
+            cluster_id = str(getattr(original_post, 'cluster_id', '') or '')
 
-        # Construct the Election Commission Official Prompt
-        prompt = f"""Persona
-You are the official communication channel for the Election Commission of India, Tamil Nadu. Your voice is authoritative, impartial, and formal. Your primary objective is to disseminate accurate information, clarify electoral procedures, and ensure adherence to the Model Code of Conduct. You do not engage in political debates or take sides. Your communication is always factual, transparent, and in the public interest.
+        org_name = await self._get_cluster_name(cluster_id) if cluster_id else ""
+        org_context = f"You represent **{org_name}**. " if org_name else "You represent the organization being mentioned. "
 
-CRITICAL PRELIMINARY STEP: Information Verification
-Before you draft a response, you MUST perform an internal information verification based on the post in question. Access your knowledge base for the following:
-1. Identify the Core Issue: What is the central claim, question, or allegation in the post concerning the election process, a candidate's/party's action, or the ECI's conduct?
-2. Consult Official ECI Records & Rules: Cross-reference the issue with the Representation of the People Act, 1951, the Model Code of Conduct (MCC), official ECI circulars, press releases, and historical electoral data.
-3. Formulate a Factual Statement: Prepare a clear, neutral, and verifiable statement of fact based on the official rules and records that directly addresses the issue raised in the post.
+        tone_map = {
+            "professional": "formal, measured, and authoritative",
+            "empathetic": "warm, understanding, and human",
+            "assertive": "confident and direct",
+            "apologetic": "sincere and remorseful",
+            "informative": "helpful and factual",
+        }
+        tone_instruction = tone_map.get(tone.lower().split()[0], tone_map["professional"])
 
-Communication Protocol (You MUST use your verified information to execute this structure)
-1. Official Opening: Begin with a formal and direct statement that acknowledges the subject matter without validating any misinformation (e.g., "It has come to the notice of the Election Commission...", "For the information of the public and all stakeholders...").
-2. Factual Clarification: State the verified fact or the relevant rule from the ECI's regulations. Use precise, unambiguous, and official language. If applicable, cite the specific rule or section of the Model Code of Conduct.
-3. Provide Context and Guidance: Briefly explain the regulation or process to ensure public understanding and transparency. Frame the information to educate the public on their rights and the responsibilities of political parties and candidates.
-4. Concluding Directive: Conclude with a formal directive, a reminder to political parties and the public to uphold electoral laws, or a link to official ECI resources for further information. The conclusion should reinforce the ECI's commitment to free and fair elections.
+        prompt = f"""You are a social media manager responding to a post on behalf of your organization.
 
-Your Task
-You are to draft a response to the following post. Generate three distinct response options adhering strictly to your Persona and the Communication Protocol, using the facts you have verified.
+{org_context}Craft a response that directly addresses what this specific post says.
 
-CONTEXT (The post to respond to):
+POST DETAILS:
 Platform: {post_platform}
-Author: {post_author}
-Content: {post_content}
+Author: @{post_author}
+Post Content: {post_content}
 
-FINAL INSTRUCTIONS:
-1. Your tone MUST be Professional and Governmental.
-2. The language must be {language}, using formal, official terminology suitable for a government body.
-3. Each response must be clear, concise, and suitable for an official public announcement. Do NOT use any emojis.
-4. CRITICAL OUTPUT FORMAT: You MUST return ONLY a valid JSON object. No other text before or after. Example format:
-{{"option1": "Response text here", "option2": "Response text here", "option3": "Response text here"}}
-Do NOT use markdown formatting, do NOT use ```json```, just return the plain JSON object."""
+RESPONSE REQUIREMENTS:
+1. Directly address the specific issue in this post — no generic replies.
+2. Tone: Be {tone_instruction}.
+3. Language: Write entirely in {language}.
+4. Keep each response concise (2-4 sentences), suitable for a social media reply.
+5. No emojis. Generate 3 distinct response options.
+
+Return ONLY valid JSON:
+{{"option1": "response text", "option2": "response text", "option3": "response text"}}"""
 
         post_id = original_post.get('id', 'Unknown') if isinstance(original_post, dict) else getattr(original_post, 'id', 'Unknown')
-        logger.info(f"=== GENERATING RESPONSE (OPENAI) ===")
-        logger.info(f"Post ID: {post_id}")
-        logger.info(f"Tone: {tone}, Language: {language}")
-        logger.info(f"Post Content: {post_content}")
-        logger.info(f"Prompt length: {len(prompt)} characters")
+        logger.info(f"=== GENERATING RESPONSE (OPENAI) === Post: {post_id}, Org: {org_name}")
 
         try:
             logger.info("🔄 Calling OpenAI API...")
@@ -797,123 +801,18 @@ Do NOT use markdown formatting, do NOT use json, just return the plain JSON obje
             raise ValueError(f"REST API call failed: {e}")
 
     def _generate_intelligent_fallback(self, post_content: str, tone: str, language: str) -> dict:
-        """
-        Generate context-aware fallback responses based on post content analysis
-        This is used when AI APIs are not available but we still want contextual responses
-        """
-        # Clean and analyze post content
-        content_lower = post_content.lower() if post_content else ""
-        
-        # Detect key themes and topics
-        themes = {
-            'corruption': any(word in content_lower for word in ['corruption', 'ஊழல்', 'corrupt', 'bribe', 'லஞ்சம்']),
-            'policy': any(word in content_lower for word in ['policy', 'scheme', 'திட்டம்', 'योजना', 'project']),
-            'development': any(word in content_lower for word in ['development', 'progress', 'வளர்ச்சி', 'विकास']),
-            'opposition': any(word in content_lower for word in ['opposition', 'bjp', 'congress', 'எதிர்க்கட்சி']),
-            'leadership': any(word in content_lower for word in ['leader', 'cm', 'minister', 'தலைவர்', 'முதல்வர்']),
-            'election': any(word in content_lower for word in ['election', 'vote', 'தேர்தல்', 'வோட்']),
-            'economy': any(word in content_lower for word in ['economy', 'economic', 'பொருளாதார', 'வேலை', 'job']),
-        }
-        
-        # Generate contextual responses based on detected themes
+        """Fallback responses when AI APIs are unavailable — generic acknowledgements only."""
+        content_preview = (post_content or "")[:120]
         if language.lower() == 'tamil':
-            return self._generate_tamil_contextual_responses(post_content, tone, themes)
+            return {
+                "option1": f"உங்கள் கருத்தை பகிர்ந்ததற்கு நன்றி. இந்த விஷயத்தை நாங்கள் கவனத்தில் எடுத்துக்கொள்கிறோம்.",
+                "option2": f"உங்கள் அனுபவம் பற்றி அறிந்ததில் வருந்துகிறோம். விரைவில் தொடர்பு கொள்கிறோம்.",
+                "option3": f"உங்கள் கோரிக்கை பதிவு செய்யப்பட்டுள்ளது. சிறந்த சேவை அளிக்க முயல்வோம்.",
+            }
         else:
-            return self._generate_english_contextual_responses(post_content, tone, themes)
-    
-    def _generate_tamil_contextual_responses(self, post_content: str, tone: str, themes: dict) -> dict:
-        """Generate Tamil contextual responses based on post themes"""
-        base_responses = []
-        
-        # Content-aware response generation
-        if themes['corruption']:
-            base_responses = [
-                f"ஊழல் பற்றி பேசுபவர்கள் முதலில் தங்கள் வீட்டை சுத்தம் செய்யட்டும். எங்கள் அரசு வெளிப்படைத்தன்மையுடன் செயல்படுகிறது.",
-                f"ஊழல் அரசியல் நாடகங்களைக் காட்டிலும், மக்கள் நலனுக்கான உண்மையான வேலைகளில் எங்கள் கவனம்.",
-                f"குற்றச்சாட்டுகள் எங்களை நிறுத்தாது. எங்கள் வேலை தொடர்ந்து நடந்து கொண்டிருக்கும்."
-            ]
-        elif themes['development']:
-            base_responses = [
-                f"வளர்ச்சியை எதிர்ப்பவர்கள் மக்களின் எதிரிகள். எங்கள் திட்டங்கள் மக்களை வாழ வைக்கும்.",
-                f"75 ஆண்டுகளாக நாங்கள் உண்மையான வளர்ச்சியை காட்டி வருகிறோம், வெற்று வாக்குறுதிகளை அல்ல.",
-                f"எங்கள் வளர்ச்சி பணிகள் தமிழ்நாட்டை முன்னணி மாநிலமாக உயர்த்தி வருகின்றன."
-            ]
-        elif themes['opposition']:
-            base_responses = [
-                f"எதிர்க்கட்சியினரின் விமர்சனங்கள் எங்கள் வேலையின் அளவீட்டுக்கானவை.",
-                f"அவர்கள் விமர்சிக்கும் போது, நாங்கள் மக்களுக்கு சேவை செய்து கொண்டிருக்கிறோம்.",
-                f"எதிர்ப்பும் விமர்சனமும் ஜனநாயகத்தின் அங்கம். ஆனால் வேலையும் தொடர வேண்டும்."
-            ]
-        elif themes['policy']:
-            base_responses = [
-                f"எங்கள் திட்டங்கள் மக்கள் நலனில் வேரூன்றியவை, அரசியல் நலனில் அல்ல.",
-                f"நீண்ட கால திட்டமிடலுடன் எங்கள் கொள்கைகள் உருவாக்கப்படுகின்றன.",
-                f"மக்களின் கருத்துக்களை கேட்டு, அவர்களுக்கான திட்டங்களை உருவாக்குகிறோம்."
-            ]
-        else:
-            # General responses
-            base_responses = [
-                f"உங்கள் கருத்துக்கு நன்றி. எங்கள் வேலைதான் எங்களுக்கான பதில்.",
-                f"மக்களின் நம்பிக்கையை நியாயப்படுத்தும் வகையில் எங்கள் பணி தொடர்கிறது.",
-                f"விமர்சனங்களை ஏற்றுக்கொண்டு, சிறந்த சேவை செய்வதே எங்கள் குறிக்கோள்."
-            ]
-        
-        # Adjust tone
-        if tone.lower() in ['sarcastic', 'assertive']:
-            # Make responses more pointed
-            enhanced_responses = []
-            for response in base_responses:
-                if 'எங்கள்' in response:
-                    enhanced_responses.append(response + " வயிறு எரியுதா? 🔥")
-                else:
-                    enhanced_responses.append(response + " இது தான் உண்மை!")
-            base_responses = enhanced_responses
-        
-        return {
-            "option1": base_responses[0] if len(base_responses) > 0 else "நன்றி, உங்கள் கருத்துக்கு.",
-            "option2": base_responses[1] if len(base_responses) > 1 else "எங்கள் வேலை தொடர்ந்து நடக்கும்.",
-            "option3": base_responses[2] if len(base_responses) > 2 else "மக்கள் நலனே எங்கள் குறிக்கோள்."
-        }
-    
-    def _generate_english_contextual_responses(self, post_content: str, tone: str, themes: dict) -> dict:
-        """Generate English contextual responses based on post themes"""
-        base_responses = []
-        
-        if themes['corruption']:
-            base_responses = [
-                "Those who talk about corruption should first clean their own house. Our government operates with transparency.",
-                "Our focus is on real work for people's welfare, not corruption politics and drama.",
-                "Accusations won't stop us. Our work for the people continues."
-            ]
-        elif themes['development']:
-            base_responses = [
-                "Those who oppose development are enemies of the people. Our projects uplift lives.",
-                "For 75 years, we've shown real development, not empty promises.",
-                "Our development work is making Tamil Nadu a leading state."
-            ]
-        elif themes['opposition']:
-            base_responses = [
-                "Opposition criticism is a measure of our work's impact.",
-                "While they criticize, we continue serving the people.",
-                "Opposition and criticism are part of democracy. But work must also continue."
-            ]
-        else:
-            base_responses = [
-                "Thank you for your opinion. Our work speaks for itself.",
-                "We continue our service to justify people's trust.",
-                "We accept criticism and aim to serve better."
-            ]
-        
-        # Adjust tone
-        if tone.lower() in ['sarcastic', 'assertive']:
-            enhanced_responses = []
-            for response in base_responses:
-                enhanced_responses.append(response + " That's the reality!")
-            base_responses = enhanced_responses
-        
-        return {
-            "option1": base_responses[0] if len(base_responses) > 0 else "Thank you for your perspective.",
-            "option2": base_responses[1] if len(base_responses) > 1 else "Our work continues for the people.",
-            "option3": base_responses[2] if len(base_responses) > 2 else "People's welfare is our goal."
-        }
+            return {
+                "option1": "Thank you for reaching out. We've noted your concern and will look into this promptly.",
+                "option2": "We're sorry to hear about your experience. Our team will get in touch with you shortly.",
+                "option3": "Your feedback has been registered. We're committed to resolving this for you.",
+            }
 

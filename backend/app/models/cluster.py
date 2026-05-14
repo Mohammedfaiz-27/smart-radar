@@ -17,7 +17,9 @@ class PlatformConfig(BaseModel):
     language: Optional[str] = Field(default=None, description="Language filter (e.g., 'en', 'ta')")
     location: Optional[str] = Field(default=None, description="Geographic location (e.g., 'Tamilnadu')")
     min_engagement: int = Field(default=0, description="Minimum engagement threshold")
-    max_results: int = Field(default=30, description="Maximum results per fetch (reduced from 100 for speed)")
+    max_results: int = Field(default=1000, description="Total maximum posts to collect per keyword")
+    batch_size: int = Field(default=200, description="Posts to collect before pausing")
+    batch_delay: float = Field(default=5.0, description="Seconds to wait between batches")
     
 class ClusterPlatformConfig(BaseModel):
     """Configuration for all platforms"""

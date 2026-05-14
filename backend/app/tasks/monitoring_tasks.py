@@ -214,59 +214,36 @@ async def aggregate_daily_analytics(self):
 @celery_app.task(base=AsyncTask, bind=True)
 async def cleanup_old_data(self):
     """
-    Clean up old data to manage database size
+    Full daily wipe: delete ALL rows from posts_table so the next
+    collection cycle starts with a completely fresh dataset.
+    Uses asyncpg (Supabase PostgreSQL).
     """
     try:
         from app.core.database import get_database
-        db = get_database()
-        
-        # Define retention periods
-        retention_periods = {
-            "social_posts": 30,  # Keep posts for 30 days
-            "response_logs": 90,  # Keep response logs for 90 days
-        }
-        
-        cleanup_results = {}
-        
-        for collection_name, days in retention_periods.items():
-            cutoff_date = datetime.utcnow() - timedelta(days=days)
-            
-            collection = db[collection_name]
-            
-            # Count documents to be deleted
-            count_to_delete = await collection.count_documents({
-                "collected_at": {"$lt": cutoff_date}
-            })
-            
-            if count_to_delete > 0:
-                # Delete old documents
-                result = await collection.delete_many({
-                    "collected_at": {"$lt": cutoff_date}
-                })
-                
-                cleanup_results[collection_name] = {
-                    "deleted_count": result.deleted_count,
-                    "retention_days": days
-                }
-            else:
-                cleanup_results[collection_name] = {
-                    "deleted_count": 0,
-                    "retention_days": days
-                }
-        
-        total_deleted = sum(r["deleted_count"] for r in cleanup_results.values())
-        
-        # Log cleanup results
-        print(f"Cleanup completed: {total_deleted} documents deleted")
-        
+        pool = get_database()
+
+        async with pool.acquire() as conn:
+            # Count before delete
+            count = await conn.fetchval("SELECT COUNT(*) FROM posts_table")
+
+            # Wipe ALL posts — full reset
+            await conn.execute("DELETE FROM posts_table")
+
+            # Clean up old response logs (keep last 90 days)
+            await conn.execute(
+                "DELETE FROM response_logs WHERE responded_at < NOW() - INTERVAL '90 days'"
+            )
+
+        print(f"Daily cleanup: {count} posts deleted. Fresh collection starts now.")
+
         return {
             "status": "success",
-            "total_deleted": total_deleted,
-            "cleanup_results": cleanup_results,
+            "total_deleted": count,
             "timestamp": datetime.utcnow().isoformat()
         }
-        
+
     except Exception as e:
+        print(f"Daily cleanup error: {e}")
         return {
             "status": "error",
             "error": str(e),

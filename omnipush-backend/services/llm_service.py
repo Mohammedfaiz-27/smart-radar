@@ -145,7 +145,7 @@ class LLMService:
 
             # Create Gemini client
             try:
-                gemini_model = model or "gemini-2.5-pro"
+                gemini_model = model or "gemini-2.0-flash"
                 gemini_temp = temperature if temperature is not None else 0.7
 
                 # Filter kwargs to only include parameters supported by ChatGoogleGenerativeAI
@@ -369,9 +369,9 @@ class LLMService:
                 if not provider:
                     # Default to Gemini for vision (since it's the default provider)
                     provider = LLMProvider.GEMINI
-                    model = model or "gemini-2.5-pro"
+                    model = model or "gemini-2.0-flash"
                 elif provider == LLMProvider.GEMINI:
-                    model = model or "gemini-2.5-pro"
+                    model = model or "gemini-2.0-flash"
                 else:
                     # OpenAI
                     model = model or "gpt-4o"
@@ -411,7 +411,7 @@ class LLMService:
 
             # Determine model name for logging
             if provider == LLMProvider.GEMINI:
-                log_model = model or "gemini-2.5-pro"
+                log_model = model or "gemini-2.0-flash"
             else:
                 log_model = model or (
                     self._clients[profile.value].model_name
@@ -522,7 +522,7 @@ class LLMService:
 
             # Determine model name for logging
             if provider == LLMProvider.GEMINI:
-                log_model = model or "gemini-2.5-pro"
+                log_model = model or "gemini-2.0-flash"
             else:
                 log_model = model or (
                     self._clients[profile.value].model_name

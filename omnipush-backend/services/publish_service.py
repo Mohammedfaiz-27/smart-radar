@@ -42,7 +42,8 @@ class PublishConfig:
         whatsapp_sender_phone: str = "+918189900456",
         # New channel group support
         channel_group_id: str = None,
-        social_accounts: List[Dict[str, Any]] = None
+        social_accounts: List[Dict[str, Any]] = None,
+        template_name: str = None
     ):
         self.channels = channels or ["facebook", "instagram", "whatsapp"]
         self.publish_text = publish_text
@@ -50,13 +51,14 @@ class PublishConfig:
         self.generate_news_card = generate_news_card
         self.facebook_page_id = facebook_page_id
         self.whatsapp_group_id = whatsapp_group_id
-        self.facebook_access_token = os.getenv("FB_LONG_LIVED_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN") or facebook_access_token 
+        self.facebook_access_token = os.getenv("FB_LONG_LIVED_TOKEN") or os.getenv("FACEBOOK_ACCESS_TOKEN") or facebook_access_token
         self.periskope_api_key =  os.getenv("PERISKOPE_API_KEY") or periskope_api_key
-        self.whatsapp_sender_phone = os.getenv("WHATSAPP_SENDER_PHONE") or whatsapp_sender_phone 
-        
+        self.whatsapp_sender_phone = os.getenv("WHATSAPP_SENDER_PHONE") or whatsapp_sender_phone
+
         # Channel group support
         self.channel_group_id = channel_group_id
         self.social_accounts = social_accounts or []
+        self.template_name = template_name
 
 
 class PublishResult:
@@ -356,47 +358,46 @@ class PublishService:
                     # Generate channel-specific newscard if needed
                     channel_image_url = image_url
                     
-                    # Generate channel-specific newscard for both cases:
-                    # 1. When no image is provided and newscard generation is enabled
-                    # 2. When in newscard_with_image mode (to ensure different templates per channel)
-                    should_generate_channel_newscard = (
-                        (image_url is None and self.config.generate_news_card and self.config.publish_image) or
-                        (self.config.generate_news_card and hasattr(self, '_post_mode') and self._post_mode == "newscard_with_image")
+                    # Generate newscard when:
+                    # 1. No image provided and newscard generation is enabled (text → card)
+                    # 2. Mode is newscard_with_image (explicit)
+                    # 3. Mode is news_card with a user-selected template (image becomes background)
+                    _mode = getattr(self, '_post_mode', None)
+                    should_generate_channel_newscard = self.config.generate_news_card and (
+                        image_url is None or
+                        _mode in ("newscard_with_image", "news_card")
                     )
-                    
+
                     if should_generate_channel_newscard:
                         logger.info(f"Generating channel-specific newscard for {platform}: {account_name}")
                         try:
                             from services.content_service import generate_news_card_from_text
-                            
+
                             # Create channel-specific content adaptation for newscard
                             channel_adaptation = {
                                 'channel_name': account_name,
                                 'channel_id': account_id,
                                 'platform': platform,
                             }
-                            
-                            # Determine newscard image URL based on context:
-                            # 1. Manual posts: Respect _post_mode setting (only use image for newscard_with_image mode)
-                            # 2. External news (newsit): Always use image if available (has_images check)
-                            if hasattr(self, '_post_mode'):
-                                # Manual post - respect post_mode setting
-                                newscard_image_url = image_url if self._post_mode == "newscard_with_image" else None
-                            else:
-                                # External news or no post_mode set - use image if available
+
+                            # Pass image_url as template background when in news_card/newscard_with_image mode
+                            if _mode in ("newscard_with_image", "news_card"):
                                 newscard_image_url = image_url
+                            else:
+                                newscard_image_url = None
                             
                             news_card_result = await generate_news_card_from_text(
-                                title="", # Use empty title since content has the full message
+                                title="",
                                 content=final_content,
                                 tenant_id=tenant_id,
                                 content_adaptation=channel_adaptation,
                                 channel_id=account_id,
                                 image_url=newscard_image_url,
-                                headline=final_headline,  # Pass headline for newscard rendering
-                                district=extracted_district  # Pass extracted district/scope for newscard display
+                                headline=final_headline,
+                                district=extracted_district,
+                                template_name=self.config.template_name
                             )
-                            
+
                             if news_card_result.get('url'):
                                 channel_image_url = news_card_result['url']
                                 logger.info(f"Channel-specific newscard generated for {account_name}: {channel_image_url}")
@@ -404,7 +405,7 @@ class PublishService:
                                 logger.warning(f"Failed to generate newscard for {account_name}")
                         except Exception as newscard_error:
                             logger.error(f"Error generating newscard for {account_name}: {newscard_error}")
-                    
+
                     logger.info(f"Previewing for {platform}: {account_name}")
                     
                     # Use account-specific key for results
@@ -738,7 +739,8 @@ class PublishService:
                     # Note: For global newscard, district extraction is not needed here
                     # as it's handled per-channel in _publish_to_channel_group_accounts
                     news_card_result = await generate_news_card_from_text(
-                        title, content, tenant_id, content_adaptation, channel_id=None, image_url=image_url
+                        title, content, tenant_id, content_adaptation, channel_id=None, image_url=image_url,
+                        template_name=self.config.template_name
                     )
                     if news_card_result.get('url'):
                         news_card_url = news_card_result['url']
@@ -956,52 +958,50 @@ class PublishService:
                 self.db_client, social_account_ids, tenant_id
             )
 
-            if not channel_configs:
-                logger.warning("No channel configurations found, using original content")
-                channel_configs = [
-                    ChannelConfig(
-                        id=account['id'],
-                        platform=account['platform'],
-                        account_name=account['account_name'],
-                        content_tone='professional'
-                    )
-                    for account in self.config.social_accounts
-                ]
-
-            # Step 2: Adapt content for ALL channels using multi-page news in batches
-            # This replaces the old batch approach with consolidated multi-page generation
-            # Processes in batches of 20 accounts per LLM call for optimal performance
-            # IMPORTANT: Enable district extraction for newscard generation with proper district/scope
-            should_generate_headline = getattr(self, '_should_include_headline', False)
-            batch_results, extracted_district = await self.content_adaptation_service.adapt_content_multi_page_news(
-                original_content=content,
-                channels=channel_configs,
-                include_headline=should_generate_headline,
-                extract_district=True,  # Enable district extraction and scope determination (national/state/district)
-                batch_size=20,  # Default batch size
-                source_image_url=source_image_url  # Pass source image for LLM vision
-            )
-
-            # Log extracted district for debugging
-            if extracted_district:
-                logger.info(f"📍 District/Scope extracted from content: {extracted_district}")
-            else:
-                logger.warning("⚠️ No district/scope extracted from content")
-
-            # Step 3: Create a mapping of channel_id -> adapted content
+            # Step 2: Adapt content — skip AI entirely when no custom channel configs exist
             adapted_content_map = {}
-            for batch_result in batch_results:
-                for adaptation in batch_result.adaptations:
-                    adapted_content_map[adaptation.channel_id] = adaptation
-                    
-                    # Track adaptation results in database
-                    if post_id and self.db_client:
-                        try:
-                            await self.content_adaptation_service.track_adaptation_result(
-                                self.db_client, post_id, adaptation.channel_id, adaptation, tenant_id
-                            )
-                        except Exception as track_error:
-                            logger.warning(f"Failed to track adaptation result: {track_error}")
+            extracted_district = None
+
+            if not channel_configs:
+                logger.info("No channel configurations found — publishing original content without AI adaptation")
+                # Build a pass-through map so the rest of the pipeline works unchanged
+                for account in self.config.social_accounts:
+                    class _PassThrough:
+                        def __init__(self, acct_id, orig):
+                            self.channel_id = acct_id
+                            self.adapted_content = orig
+                            self.success = True
+                            self.error_message = None
+                            self.headline = None
+                            self.news_card_url = None
+                            self.district = None
+                            self.scope = None
+                    adapted_content_map[account['id']] = _PassThrough(account['id'], content)
+            else:
+                should_generate_headline = getattr(self, '_should_include_headline', False)
+                batch_results, extracted_district = await self.content_adaptation_service.adapt_content_multi_page_news(
+                    original_content=content,
+                    channels=channel_configs,
+                    include_headline=should_generate_headline,
+                    extract_district=True,
+                    batch_size=20,
+                    source_image_url=source_image_url
+                )
+
+                if extracted_district:
+                    logger.info(f"📍 District/Scope extracted from content: {extracted_district}")
+
+                for batch_result in batch_results:
+                    for adaptation in batch_result.adaptations:
+                        adapted_content_map[adaptation.channel_id] = adaptation
+
+                        if post_id and self.db_client:
+                            try:
+                                await self.content_adaptation_service.track_adaptation_result(
+                                    self.db_client, post_id, adaptation.channel_id, adaptation, tenant_id
+                                )
+                            except Exception as track_error:
+                                logger.warning(f"Failed to track adaptation result: {track_error}")
             
             # Step 4: Publish to each account using adapted content and channel-specific newscards
             for account in self.config.social_accounts:
@@ -1029,12 +1029,14 @@ class PublishService:
                     # Generate channel-specific newscard if needed
                     channel_image_url = image_url  # Start with provided image (if any)
 
-                    # Generate channel-specific newscard for both cases:
-                    # 1. When no image is provided and newscard generation is enabled
-                    # 2. When in newscard_with_image mode (to ensure different templates per channel)
-                    should_generate_channel_newscard = (
-                        (image_url is None and self.config.generate_news_card and self.config.publish_image) or
-                        (self.config.generate_news_card and hasattr(self, '_post_mode') and self._post_mode == "newscard_with_image")
+                    # Generate newscard when:
+                    # 1. No image provided and newscard generation is enabled (text → card)
+                    # 2. Mode is newscard_with_image (explicit)
+                    # 3. Mode is news_card with a user-selected template (image becomes background)
+                    _mode = getattr(self, '_post_mode', None)
+                    should_generate_channel_newscard = self.config.generate_news_card and (
+                        image_url is None or
+                        _mode in ("newscard_with_image", "news_card")
                     )
 
                     if should_generate_channel_newscard:
@@ -1049,28 +1051,24 @@ class PublishService:
                                 'channel_name': account_name,
                                 'channel_id': account_id,
                                 'platform': platform,
-                                # 'tone': adaptation.content_tone if adaptation and adaptation.success else 'professional'
                             }
 
-                            # Determine newscard image URL based on context:
-                            # 1. Manual posts: Respect _post_mode setting (only use image for newscard_with_image mode)
-                            # 2. External news (newsit): Always use image if available (has_images check)
-                            if hasattr(self, '_post_mode'):
-                                # Manual post - respect post_mode setting
-                                newscard_image_url = image_url if self._post_mode == "newscard_with_image" else None
-                            else:
-                                # External news or no post_mode set - use image if available
+                            # Pass image_url as template background when in news_card/newscard_with_image mode
+                            if _mode in ("newscard_with_image", "news_card"):
                                 newscard_image_url = image_url
+                            else:
+                                newscard_image_url = None
 
                             news_card_result = await generate_news_card_from_text(
-                                title="", # Use empty title since content has the full message
+                                title="",
                                 content=final_content,
                                 tenant_id=tenant_id,
                                 content_adaptation=channel_adaptation,
                                 channel_id=account_id,
                                 image_url=newscard_image_url,
-                                headline=final_headline,  # Pass headline for newscard rendering
-                                district=extracted_district  # Pass extracted district/scope for newscard display
+                                headline=final_headline,
+                                district=extracted_district,
+                                template_name=self.config.template_name
                             )
 
                             if news_card_result.get('url'):

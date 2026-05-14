@@ -19,9 +19,9 @@ async def connect_to_mongo():
         raise RuntimeError("DATABASE_URL environment variable not set")
     _pool = await asyncpg.create_pool(
         url,
-        min_size=2,
-        max_size=10,
-        command_timeout=30,
+        min_size=3,
+        max_size=25,
+        command_timeout=60,
         ssl="require",
         statement_cache_size=0,  # required for Supabase pooler (PgBouncer/Supavisor)
     )

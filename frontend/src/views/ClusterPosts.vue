@@ -9,15 +9,38 @@
           </svg>
         </button>
         <h1 class="text-2xl font-bold text-gray-900">{{ name }} Posts by Platform</h1>
+        <button @click="fetchClusterPosts" :disabled="loading"
+          class="ml-auto flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 border border-gray-200 hover:border-blue-300 px-3 py-1.5 rounded-lg transition-colors disabled:opacity-40">
+          <svg class="w-3.5 h-3.5" :class="loading && 'animate-spin'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Refresh
+        </button>
       </div>
     </div>
 
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <!-- Loading State -->
-      <div v-if="loading" class="text-center py-8">
+      <div v-if="loading" class="text-center py-12">
         <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-        <p class="mt-2 text-sm text-gray-500">Loading posts...</p>
+        <p class="mt-3 text-sm text-gray-500">Loading posts…</p>
+      </div>
+
+      <!-- Error State -->
+      <div v-else-if="fetchError" class="bg-white rounded-2xl shadow-sm border border-red-200 p-10 text-center">
+        <svg class="w-12 h-12 text-red-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+        </svg>
+        <p class="text-sm font-semibold text-gray-700 mb-1">Failed to load posts</p>
+        <p class="text-xs text-gray-400 mb-4">{{ fetchError }}</p>
+        <button @click="fetchClusterPosts"
+          class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+          </svg>
+          Retry
+        </button>
       </div>
 
       <!-- Content -->
@@ -357,166 +380,72 @@ const currentTabPosts = computed(() => {
   return postsByPlatform.value[activeTab.value] || []
 })
 
+const fetchError = ref(null)
+
 const fetchClusterPosts = async () => {
   loading.value = true
+  fetchError.value = null
   try {
-    const apiBase = import.meta.env.VITE_API_URL || ''
-
-    // First, fetch the cluster by name to get its ID
-    const clustersResponse = await fetch(`${apiBase}/api/v1/clusters/`)
-    if (!clustersResponse.ok) {
-      throw new Error('Failed to fetch clusters')
-    }
-
-    const clusters = await clustersResponse.json()
+    // Step 1: find the cluster — use relative path so Vite proxy handles it reliably
+    const clustersRes = await fetch('/api/v1/clusters/')
+    if (!clustersRes.ok) throw new Error(`Clusters API error: ${clustersRes.status}`)
+    const clusters = await clustersRes.json()
     const cluster = clusters.find(c => c.name === props.name)
+    if (!cluster) throw new Error(`Cluster "${props.name}" not found`)
 
-    if (!cluster) {
-      throw new Error(`Cluster ${props.name} not found`)
+    // Step 2: fire all 4 fetches in parallel — if any fail, the rest still succeed
+    const [postsRes, newsRes, magazineRes, dailyRes] = await Promise.allSettled([
+      fetch(`/api/v1/posts?cluster_id=${cluster.id}&limit=1000`),
+      fetch(`/api/v1/clusters/${cluster.id}/posts?platform=web_news&limit=1000`),
+      fetch(`/api/v1/posts/print-magazines?cluster_id=${cluster.id}&limit=1000`),
+      fetch(`/api/v1/posts/print-daily?cluster_id=${cluster.id}&limit=1000`),
+    ])
+
+    // Step 3: safely extract each result (ignore failed fetches)
+    const safeJson = async (settled) => {
+      if (settled.status !== 'fulfilled' || !settled.value.ok) return []
+      try { return await settled.value.json() } catch { return [] }
     }
 
-    // Fetch posts directly from correct API (bypassing smart selector)
-    const postsResponse = await fetch(`${apiBase}/api/v1/posts?cluster_id=${cluster.id}&limit=1000`)
-    let clusterPosts = []
+    const [postsData, newsData, magazineData, dailyData] = await Promise.all([
+      safeJson(postsRes),
+      safeJson(newsRes),
+      safeJson(magazineRes),
+      safeJson(dailyRes),
+    ])
 
-    if (postsResponse.ok) {
-      const postsData = await postsResponse.json()
-      clusterPosts = Array.isArray(postsData) ? postsData : (postsData.posts || [])
-      console.log(`Fetched ${clusterPosts.length} posts for ${cluster.name} cluster directly from API`)
-    } else {
-      console.error('Failed to fetch posts', postsResponse.status)
-    }
+    const mainPosts   = Array.isArray(postsData) ? postsData : (postsData.posts || [])
+    const newsArticles = Array.isArray(newsData) ? newsData : []
 
-    // Also fetch news articles, print magazines, and print daily separately
-    const newsResponse = await fetch(`${apiBase}/api/v1/clusters/${cluster.id}/posts?platform=web_news&limit=1000`)
-    const printMagazineResponse = await fetch(`${apiBase}/api/v1/posts/print-magazines?cluster_id=${cluster.id}&limit=1000`)
-    const printDailyResponse = await fetch(`${apiBase}/api/v1/posts/print-daily?cluster_id=${cluster.id}&limit=1000`)
-    
-    const posts = clusterPosts // Use filtered posts from store
-    const newsArticles = []
-    const printMagazineArticles = []
-    const printDailyArticles = []
-    
-    // Process news articles
-    if (newsResponse.ok) {
-      const newsData = await newsResponse.json()
-      const newsArray = Array.isArray(newsData) ? newsData : []
-      
-      // Web news articles are already filtered for this cluster by the backend
-      newsArticles.push(...newsArray)
-      console.log(`[${new Date().toISOString()}] Fetched ${newsArray.length} web news articles for ${cluster.name} cluster`)
-    } else {
-      console.error('Failed to fetch news articles', newsResponse.status)
-    }
-    
-    // Process print magazine articles
-    if (printMagazineResponse.ok) {
-      const printMagazineData = await printMagazineResponse.json()
-      const printArray = Array.isArray(printMagazineData) ? printMagazineData : (printMagazineData.articles || [])
-      
-      // Transform print magazine articles to match post structure
-      const transformedPrintMagazines = printArray.map(article => ({
-        id: article.id,
-        platform: 'print_magazine',
-        content: article.content?.text || article.content || '',
-        author: article.author?.publication_name || article.author || 'Print Magazine',
-        posted_at: article.published_at || article.collected_at,
-        url: article.url || '',
-        post_url: article.url || '',
-        sentiment: article.intelligence?.entity_sentiments ? 
-          Object.values(article.intelligence.entity_sentiments)[0]?.label?.toLowerCase() || 'neutral' : 'neutral',
-        cluster_type: article.matched_clusters?.[0]?.cluster_type || 'unknown',
-        engagement_metrics: {
-          views: 0,
-          likes: 0,
-          comments: 0,
-          shares: 0
-        },
-        threat_level: article.intelligence?.threat_level || 'Low',
-        threat_topic: article.intelligence?.threat_campaign_topic || ''
-      }))
-      
-      printMagazineArticles.push(...transformedPrintMagazines)
-      console.log(`[${new Date().toISOString()}] Fetched ${transformedPrintMagazines.length} print magazine articles for ${cluster.name} cluster`)
-    } else {
-      console.error('Failed to fetch print magazine articles', printMagazineResponse.status)
-    }
-    
-    // Process print daily articles
-    if (printDailyResponse.ok) {
-      const printDailyData = await printDailyResponse.json()
-      const printDailyArray = Array.isArray(printDailyData) ? printDailyData : (printDailyData.articles || [])
-      
-      // Transform print daily articles to match post structure
-      const transformedPrintDaily = printDailyArray.map(article => ({
-        id: article.id,
-        platform: 'print_daily',
-        content: article.content?.text || article.content || '',
-        author: article.publisher || article.author?.publication_name || article.author || 'Print Daily',
-        posted_at: article.published_at || article.collected_at,
-        url: article.url || '',
-        post_url: article.url || '',
-        sentiment: article.intelligence?.entity_sentiments ? 
-          Object.values(article.intelligence.entity_sentiments)[0]?.label?.toLowerCase() || 'neutral' : 'neutral',
-        cluster_type: article.matched_clusters?.[0]?.cluster_type || 'unknown',
-        engagement_metrics: {
-          views: 0,
-          likes: 0,
-          comments: 0,
-          shares: 0
-        },
-        threat_level: article.intelligence?.threat_level || 'Low',
-        threat_topic: article.intelligence?.threat_campaign_topic || '',
-        publisher: article.publisher || 'Unknown'
-      }))
-      
-      printDailyArticles.push(...transformedPrintDaily)
-      console.log(`[${new Date().toISOString()}] Fetched ${transformedPrintDaily.length} print daily articles for ${cluster.name} cluster`)
-    } else {
-      console.error('Failed to fetch print daily articles', printDailyResponse.status)
-    }
-    
-    // Combine posts, news articles, print magazines, and print daily
-    allPosts.value = [...posts, ...newsArticles, ...printMagazineArticles, ...printDailyArticles]
-    
-    // Debug: Check first few posts for sentiment and URL data
-    if (allPosts.value.length > 0) {
-      console.log('Sample post data:')
-      console.log('First post sentiment:', allPosts.value[0]?.sentiment)
-      console.log('First post URL:', allPosts.value[0]?.url)
-      console.log('First post post_url:', allPosts.value[0]?.post_url)
-      console.log('First post author:', allPosts.value[0]?.author)
-      console.log('First post platform:', allPosts.value[0]?.platform)
-      console.log('All fields in first post:', Object.keys(allPosts.value[0] || {}))
-      console.log('Full first post:', allPosts.value[0])
-      
-      // Check platform distribution
-      const platformCounts = {}
-      allPosts.value.forEach(post => {
-        const platform = post.platform || 'unknown'
-        platformCounts[platform] = (platformCounts[platform] || 0) + 1
-      })
-      console.log('Platform distribution:', platformCounts)
-      
-      // Temporary: Add test sentiment variety for debugging (only for posts without sentiment)
-      allPosts.value.forEach((post, index) => {
-        if (!post.sentiment || post.sentiment === 'neutral') {
-          if (index % 3 === 0) post.sentiment = 'positive'
-          else if (index % 3 === 1) post.sentiment = 'negative'
-          else post.sentiment = 'neutral'
-        }
-      })
-      
-      // Check sentiment distribution
-      const sentimentCounts = {}
-      allPosts.value.forEach(post => {
-        const sentiment = post.sentiment || 'neutral'
-        sentimentCounts[sentiment] = (sentimentCounts[sentiment] || 0) + 1
-      })
-      console.log('Sentiment distribution after test data:', sentimentCounts)
-    }
+    const transformArticle = (article, platform) => ({
+      id: article.id,
+      platform,
+      content: article.content?.text || article.content || '',
+      author: article.publisher || article.author?.publication_name || article.author || platform,
+      posted_at: article.published_at || article.collected_at,
+      url: article.url || '',
+      post_url: article.url || '',
+      sentiment: article.intelligence?.entity_sentiments
+        ? Object.values(article.intelligence.entity_sentiments)[0]?.label?.toLowerCase() || 'neutral'
+        : 'neutral',
+      cluster_type: article.matched_clusters?.[0]?.cluster_type || 'unknown',
+      engagement_metrics: { views: 0, likes: 0, comments: 0, shares: 0 },
+      threat_level: article.intelligence?.threat_level || 'Low',
+      threat_topic: article.intelligence?.threat_campaign_topic || '',
+    })
+
+    const magazineArr = Array.isArray(magazineData) ? magazineData : (magazineData.articles || [])
+    const dailyArr    = Array.isArray(dailyData)    ? dailyData    : (dailyData.articles    || [])
+
+    allPosts.value = [
+      ...mainPosts,
+      ...newsArticles,
+      ...magazineArr.map(a => transformArticle(a, 'print_magazine')),
+      ...dailyArr.map(a => transformArticle(a, 'print_daily')),
+    ]
   } catch (error) {
-    console.error('Error fetching cluster posts:', error)
+    fetchError.value = error.message || 'Failed to load posts'
+    allPosts.value = []
   } finally {
     loading.value = false
   }

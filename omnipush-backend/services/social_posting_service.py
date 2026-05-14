@@ -113,12 +113,20 @@ class FacebookService(SocialPlatformService):
                     "description": caption,
                     "access_token": token,
                 }
-            else:
-                # Image post
+            elif media_url:
+                # Image post — only when an actual image URL is present
                 url = f"https://graph.facebook.com/v23.0/{user_id}/photos"
                 payload = {
                     "url": media_url,
                     "caption": caption,
+                    "access_token": token,
+                }
+            else:
+                # Text-only post — use /feed endpoint
+                self.logger.info("Text-only post (no image), using /feed endpoint")
+                url = f"https://graph.facebook.com/v23.0/{user_id}/feed"
+                payload = {
+                    "message": caption,
                     "access_token": token,
                 }
 

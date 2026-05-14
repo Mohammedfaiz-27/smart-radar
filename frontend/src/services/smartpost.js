@@ -144,8 +144,21 @@ export const smartPostApi = {
   getContentIdeas: (payload) => client.post('/v1/ai/content-ideas', payload),
   getAiUsage: () => client.get('/v1/ai/usage'),
 
-  // ── Draft create ──────────────────────────────────────────────────────
-  createDraft: (payload) => client.post('/v1/drafts', payload),
+  // ── Posts (CRUD) ─────────────────────────────────────────────────────
+  getPosts: (params = {}) => client.get('/v1/posts', { params }),
+  createPost: (payload) => client.post('/v1/posts', payload),
+
+  // ── Draft create (legacy alias → POST /v1/posts) ──────────────────────
+  createDraft: (payload) => client.post('/v1/posts', payload),
+
+  // ── Narratives (smartradar backend /api/v1/) ──────────────────────────
+  getNarratives: (params = {}) => client.get('/api/v1/narratives/', { params }),
+  createNarrative: (payload) => client.post('/api/v1/narratives/', payload),
+  updateNarrative: (id, payload) => client.put(`/api/v1/narratives/${id}`, payload),
+  deleteNarrative: (id) => client.delete(`/api/v1/narratives/${id}`),
+  useNarrative: (id) => client.post(`/api/v1/narratives/${id}/use`),
+  generateNarrativeContent: (title, category) =>
+    client.post('/api/v1/narratives/generate-content', { title, category }),
 }
 
 export default smartPostApi

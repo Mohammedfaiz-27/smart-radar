@@ -13,6 +13,11 @@ import TemplatesPage from '@/views/TemplatesPage.vue'
 import AutomationPage from '@/views/AutomationPage.vue'
 import ExternalNewsPage from '@/views/ExternalNewsPage.vue'
 import ScraperPage from '@/views/ScraperPage.vue'
+import PostCreatorPage from '@/views/PostCreatorPage.vue'
+import CalendarPage from '@/views/CalendarPage.vue'
+import PostsPage from '@/views/PostsPage.vue'
+import AnalyticsPage from '@/views/AnalyticsPage.vue'
+import ResearchPage from '@/views/ResearchPage.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -31,6 +36,11 @@ const router = createRouter({
         { path: 'automation', name: 'automation', component: AutomationPage },
         { path: 'external-news', name: 'external-news', component: ExternalNewsPage },
         { path: 'scraper', name: 'scraper', component: ScraperPage },
+        { path: 'post-creator', name: 'post-creator', component: PostCreatorPage },
+        { path: 'calendar', name: 'calendar', component: CalendarPage },
+        { path: 'posts', name: 'posts', component: PostsPage },
+        { path: 'analytics', name: 'analytics', component: AnalyticsPage },
+        { path: 'research', name: 'research', component: ResearchPage },
         { path: 'clusters/:name', name: 'cluster-detail', component: ClusterDetail, props: true },
         { path: 'clusters/:name/posts', name: 'cluster-posts', component: ClusterPosts, props: true },
         { path: 'platform/:platform/:type', name: 'platform-detail', component: PlatformDetail, props: true },
