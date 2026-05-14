@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 flex">
 
     <!-- ── Left Sidebar ─────────────────────────────────────── -->
-    <aside class="w-56 min-h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-30">
+    <aside class="w-56 h-screen bg-white border-r border-gray-200 flex flex-col fixed top-0 left-0 z-30">
 
       <!-- Brand -->
       <div class="px-4 py-5 border-b border-gray-100">
