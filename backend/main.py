@@ -25,6 +25,7 @@ from app.api.content import router as content_router
 from app.api.smart_post import router as smart_post_router
 from app.api.research import router as research_router
 from app.api.narratives import router as narratives_router
+from app.api.search import router as search_router
 from app.services.websocket_manager import WebSocketManager
 
 # Load environment variables (override any existing env vars)
@@ -103,6 +104,7 @@ app.include_router(content_router, prefix="/api/v1/content", tags=["content"])
 app.include_router(smart_post_router, prefix="/v1", tags=["smart-post"])
 app.include_router(research_router, prefix="/api/v1/research", tags=["research"])
 app.include_router(narratives_router, prefix="/api/v1/narratives", tags=["narratives"])
+app.include_router(search_router, prefix="/api/v1/search", tags=["search"])
 
 # WebSocket endpoint
 @app.websocket("/ws")

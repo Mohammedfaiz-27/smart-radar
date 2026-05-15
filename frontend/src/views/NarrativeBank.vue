@@ -5,7 +5,7 @@
       <div class="flex justify-between items-start">
         <div>
           <h1 class="text-3xl font-bold text-gray-900">Narrative Bank</h1>
-          <p class="text-gray-600 mt-1">Ready-to-use narratives for content creation and crisis response</p>
+          <p class="text-gray-600 mt-1">Ready-to-use messaging templates for brand communication and response management</p>
         </div>
         <button
           @click="openAddModal"
@@ -46,10 +46,12 @@
               class="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Categories</option>
-              <option value="policy">Policy Achievement</option>
-              <option value="crisis">Crisis Response</option>
-              <option value="leader">Leader Quote</option>
-              <option value="historical">Historical Win</option>
+              <option value="brand">Brand Response</option>
+              <option value="crisis">Crisis Management</option>
+              <option value="executive">Executive Quote</option>
+              <option value="achievement">Company Achievement</option>
+              <option value="product">Product Update</option>
+              <option value="customer">Customer Success</option>
             </select>
           </div>
 
@@ -204,11 +206,13 @@
           <div class="grid grid-cols-2 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-              <select v-model="form.category" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent">
-                <option value="policy">Policy Achievement</option>
-                <option value="crisis">Crisis Response</option>
-                <option value="leader">Leader Quote</option>
-                <option value="historical">Historical Win</option>
+              <select v-model="form.category" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                <option value="brand">Brand Response</option>
+                <option value="crisis">Crisis Management</option>
+                <option value="executive">Executive Quote</option>
+                <option value="achievement">Company Achievement</option>
+                <option value="product">Product Update</option>
+                <option value="customer">Customer Success</option>
               </select>
             </div>
             <div>
@@ -229,7 +233,7 @@
                 v-model="form.title"
                 @keydown.enter.prevent="generateContent"
                 type="text"
-                placeholder="e.g. Free Bus Scheme for Women in Tamil Nadu"
+                placeholder="e.g. Our platform achieves 99.9% uptime for enterprise clients"
                 class="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent"
               />
               <button
@@ -274,7 +278,7 @@
             <input
               v-model="tagsInput"
               type="text"
-              placeholder="#WomenEmpowerment, #FreeTransport, ..."
+              placeholder="#BrandReputation, #CustomerSuccess, #ProductUpdate, ..."
               class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-500 focus:border-transparent"
             />
           </div>
@@ -347,7 +351,7 @@ const saving           = ref(false)
 const generating       = ref(false)
 const aiGenerated      = ref(false)
 const modalError       = ref('')
-const form             = ref({ title: '', description: '', category: 'policy', priority: 'medium', tags: [] })
+const form             = ref({ title: '', description: '', category: 'brand', priority: 'medium', tags: [] })
 const tagsInput        = ref('')
 
 // ── Fetch ──────────────────────────────────────────────────────────────────
@@ -410,7 +414,7 @@ async function handleUseNarrative(narrative) {
 // ── Modal helpers ──────────────────────────────────────────────────────────
 function openAddModal() {
   editingNarrative.value = null
-  form.value = { title: '', description: '', category: 'policy', priority: 'medium', tags: [] }
+  form.value = { title: '', description: '', category: 'brand', priority: 'medium', tags: [] }
   tagsInput.value = ''
   modalError.value = ''
   aiGenerated.value = false
@@ -545,29 +549,29 @@ const getPriorityClass = (priority) => ({
 }[priority] || 'bg-gray-100 text-gray-800')
 
 const getIcon = (category) => ({
-  policy:     TruckIcon,
-  leader:     ChatBubbleLeftRightIcon,
-  historical: TrophyIcon,
-  crisis:     ShieldCheckIcon,
-  education:  AcademicCapIcon,
-  healthcare: HeartIcon,
-}[category] || TruckIcon)
+  brand:       ShieldCheckIcon,
+  crisis:      ShieldCheckIcon,
+  executive:   ChatBubbleLeftRightIcon,
+  achievement: TrophyIcon,
+  product:     TruckIcon,
+  customer:    HeartIcon,
+}[category] || ChatBubbleLeftRightIcon)
 
 const getIconBgClass = (category) => ({
-  policy:     'bg-green-100',
-  leader:     'bg-blue-100',
-  historical: 'bg-yellow-100',
-  crisis:     'bg-red-100',
-  education:  'bg-purple-100',
-  healthcare: 'bg-teal-100',
+  brand:       'bg-blue-100',
+  crisis:      'bg-red-100',
+  executive:   'bg-purple-100',
+  achievement: 'bg-yellow-100',
+  product:     'bg-green-100',
+  customer:    'bg-teal-100',
 }[category] || 'bg-gray-100')
 
 const getIconColorClass = (category) => ({
-  policy:     'text-green-600',
-  leader:     'text-blue-600',
-  historical: 'text-yellow-600',
-  crisis:     'text-red-600',
-  education:  'text-purple-600',
-  healthcare: 'text-teal-600',
+  brand:       'text-blue-600',
+  crisis:      'text-red-600',
+  executive:   'text-purple-600',
+  achievement: 'text-yellow-600',
+  product:     'text-green-600',
+  customer:    'text-teal-600',
 }[category] || 'text-gray-600')
 </script>

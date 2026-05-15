@@ -42,6 +42,10 @@
           <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
           <span>Narratives</span>
         </router-link>
+        <router-link to="/search" class="sidebar-link" :class="$route.path === '/search' ? 'sidebar-active' : 'sidebar-inactive'">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0118 0z"/></svg>
+          <span>Search</span>
+        </router-link>
 
         <p class="sidebar-section-label mt-4">Publishing</p>
         <router-link to="/post-creator" class="sidebar-link" :class="$route.path === '/post-creator' ? 'sidebar-active' : 'sidebar-inactive'">
