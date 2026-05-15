@@ -36,7 +36,7 @@
             </div>
             <div class="flex items-center gap-2 ml-4 flex-shrink-0">
               <span class="text-xs font-semibold px-2.5 py-1 rounded-full" :class="countBadge">
-                {{ posts.length }} posts
+                {{ posts.length }}{{ hasMore ? '+' : '' }} posts
               </span>
               <button @click="closeModal" class="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -49,14 +49,14 @@
           <!-- Posts list -->
           <div class="flex-1 overflow-y-auto px-6 py-4 space-y-3">
 
-            <!-- Loading -->
-            <div v-if="loading" class="flex flex-col items-center justify-center py-16 gap-3">
+            <!-- Loading first batch -->
+            <div v-if="loading && posts.length === 0" class="flex flex-col items-center justify-center py-16 gap-3">
               <div class="w-10 h-10 rounded-full border-[3px] border-gray-200 border-t-blue-600 animate-spin"></div>
               <p class="text-sm text-gray-500">Loading posts…</p>
             </div>
 
             <!-- Empty -->
-            <div v-else-if="posts.length === 0" class="flex flex-col items-center justify-center py-16 gap-2">
+            <div v-else-if="!loading && posts.length === 0" class="flex flex-col items-center justify-center py-16 gap-2">
               <svg class="w-12 h-12 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
               </svg>
@@ -64,7 +64,7 @@
             </div>
 
             <!-- Post cards -->
-            <div v-else v-for="post in posts" :key="post.id"
+            <div v-for="post in posts" :key="post.id"
               class="group bg-white border border-gray-200 rounded-xl p-4 hover:border-gray-300 hover:shadow-sm transition-all"
               :class="cardLeftBorder(post.sentiment)">
 
@@ -124,6 +124,25 @@
                 </button>
               </div>
             </div>
+            <!-- Load More -->
+            <div v-if="hasMore" class="pt-2 pb-1 text-center">
+              <button
+                @click="loadMore"
+                :disabled="loadingMore"
+                class="inline-flex items-center gap-2 px-5 py-2 text-sm font-medium rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <svg v-if="loadingMore" class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                {{ loadingMore ? 'Loading…' : `Load more posts` }}
+              </button>
+            </div>
+
+            <!-- Loading more indicator at bottom -->
+            <div v-if="loadingMore && posts.length > 0" class="py-2 text-center">
+              <div class="w-6 h-6 rounded-full border-2 border-gray-200 border-t-blue-500 animate-spin mx-auto"></div>
+            </div>
           </div>
 
         </div>
@@ -135,10 +154,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { useResponseStore } from '@/stores/response'
-import { usePostsStore } from '@/stores/posts'
 
 const responseStore = useResponseStore()
-const postsStore    = usePostsStore()
 
 const props = defineProps({
   isOpen:     { type: Boolean, default: false },
@@ -146,8 +163,12 @@ const props = defineProps({
 })
 const emit = defineEmits(['close'])
 
-const posts   = ref([])
-const loading = ref(false)
+const PAGE = 50
+const posts       = ref([])
+const loading     = ref(false)
+const loadingMore = ref(false)
+const hasMore     = ref(false)
+const skip        = ref(0)
 
 // ── Type-based styling ─────────────────────────────────────────────
 const accentBar = computed(() => ({
@@ -236,26 +257,55 @@ const handleRespond = (post) => {
   closeModal()
 }
 
+// Build query params for each widget type
+function buildParams(skp) {
+  const base = `limit=${PAGE}&skip=${skp}`
+  if (props.widgetType === 'positive')      return `cluster_type=own&sentiment_label=Positive&${base}`
+  if (props.widgetType === 'negative')      return `cluster_type=own&sentiment_label=Negative&${base}`
+  if (props.widgetType === 'opportunities') return `cluster_type=competitor&sentiment_label=Negative&${base}`
+  return base
+}
+
 const fetchPosts = async () => {
   if (!props.widgetType || !props.isOpen) return
   loading.value = true
+  posts.value = []
+  skip.value  = 0
   try {
-    await postsStore.fetchPosts()
-    const all = postsStore.posts
-    posts.value = {
-      positive:     all.filter(p => p.cluster_type === 'own' && p.sentiment === 'positive'),
-      negative:     all.filter(p => p.cluster_type === 'own' && p.sentiment === 'negative'),
-      opportunities:all.filter(p => p.cluster_type === 'competitor' && p.sentiment === 'negative'),
-    }[props.widgetType] ?? []
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const res  = await fetch(`${apiBase}/api/v1/posts?${buildParams(0)}`)
+    const data = await res.json()
+    posts.value = Array.isArray(data) ? data : []
+    hasMore.value = posts.value.length === PAGE
+    skip.value = posts.value.length
   } catch {
     posts.value = []
+    hasMore.value = false
   } finally {
     loading.value = false
   }
 }
 
-watch(() => [props.isOpen, props.widgetType], () => {
-  props.isOpen && props.widgetType ? fetchPosts() : (posts.value = [])
+const loadMore = async () => {
+  if (loadingMore.value || !hasMore.value) return
+  loadingMore.value = true
+  try {
+    const apiBase = import.meta.env.VITE_API_URL || ''
+    const res  = await fetch(`${apiBase}/api/v1/posts?${buildParams(skip.value)}`)
+    const data = await res.json()
+    const batch = Array.isArray(data) ? data : []
+    posts.value.push(...batch)
+    hasMore.value = batch.length === PAGE
+    skip.value += batch.length
+  } catch {
+    hasMore.value = false
+  } finally {
+    loadingMore.value = false
+  }
+}
+
+watch(() => [props.isOpen, props.widgetType], ([open]) => {
+  open && props.widgetType ? fetchPosts() : (posts.value = [], hasMore.value = false)
 }, { immediate: true })
 </script>
 

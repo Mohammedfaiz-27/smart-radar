@@ -144,7 +144,6 @@ onMounted(async () => {
   timeInterval = setInterval(updateTime, 1000)
   try {
     await clustersStore.fetchClusters()
-    await postsStore.fetchPosts()
   } catch (e) {
     console.error('App init error:', e)
   }

@@ -107,36 +107,21 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, reactive } from 'vue'
+import { onMounted, onUnmounted, computed, reactive } from 'vue'
 import WidgetDetailsModal from './WidgetDetailsModal.vue'
-import { usePostsStore } from '@/stores/posts'
 import { useClustersStore } from '@/stores/clusters'
+import { usePostsStore } from '@/stores/posts'
 
-// Initialize stores
-const postsStore = usePostsStore()
 const clustersStore = useClustersStore()
+const postsStore = usePostsStore()
 
-// Check if competitor clusters exist
 const hasCompetitorClusters = computed(() => clustersStore.competitorClusters.length > 0)
 
-// Stats data
-const stats = ref({
-  posts_today: 0,
-  positive_posts: 0,
-  negative_posts: 0,
-  opportunities: 0
-})
+// Use store as single source of truth — persists across tab switches
+const stats = computed(() => postsStore.dashboardStats)
 
-// Loading state
-const loading = ref(true)
+const modalState = reactive({ isOpen: false, widgetType: '' })
 
-// Modal state
-const modalState = reactive({
-  isOpen: false,
-  widgetType: ''
-})
-
-// Computed percentages
 const getPositivePercentage = () => {
   const total = stats.value.positive_posts + stats.value.negative_posts
   if (total === 0) return 0
@@ -149,93 +134,17 @@ const getNegativePercentage = () => {
   return Math.round((stats.value.negative_posts / total) * 100)
 }
 
-// Fetch dashboard statistics
-const fetchDashboardStats = async () => {
-  try {
-    loading.value = true
+const openModal = (widgetType) => { modalState.isOpen = true; modalState.widgetType = widgetType }
+const closeModal = () => { modalState.isOpen = false; modalState.widgetType = '' }
 
-    // Always calculate from posts data for accurate results
-    await postsStore.fetchPosts()
+let interval = null
 
-    const posts = postsStore.posts
-    const ownPosts = postsStore.ownPosts
-    const competitorPosts = postsStore.competitorPosts
-    const threatPosts = postsStore.threatPosts
-
-    console.log('📊 Calculating dashboard stats from', posts.length, 'posts')
-    console.log('📊 Own posts:', ownPosts.length, 'Competitor posts:', competitorPosts.length, 'Threat posts:', threatPosts.length)
-
-    // Calculate sentiment metrics from posts_table sentiment field
-    let positiveCount = 0
-    let negativeCount = 0
-    let opportunitiesCount = 0
-
-    posts.forEach(post => {
-      // Use direct sentiment field from posts_table
-      const sentiment = post.sentiment || 'neutral'
-
-      // Count own cluster sentiments (for positive/negative widgets)
-      if (post.cluster_type === 'own') {
-        if (sentiment === 'positive') {
-          positiveCount++
-        } else if (sentiment === 'negative') {
-          negativeCount++
-        }
-      }
-
-      // Count opportunities (competitor negative sentiment)
-      if (post.cluster_type === 'competitor' && sentiment === 'negative') {
-        opportunitiesCount++
-      }
-    })
-
-    stats.value = {
-      posts_today: posts.length,
-      positive_posts: positiveCount,
-      negative_posts: negativeCount,
-      opportunities: opportunitiesCount,
-      own_posts: ownPosts.length,
-      competitor_posts: competitorPosts.length,
-      threat_posts: threatPosts.length
-    }
-
-    console.log('📊 Dashboard stats calculated:', stats.value)
-
-  } catch (error) {
-    console.error('Error fetching dashboard stats:', error)
-    stats.value = {
-      posts_today: 0,
-      positive_posts: 0,
-      negative_posts: 0,
-      opportunities: 0,
-      own_posts: 0,
-      competitor_posts: 0,
-      threat_posts: 0
-    }
-  } finally {
-    loading.value = false
-  }
-}
-
-// Modal functions
-const openModal = (widgetType) => {
-  modalState.isOpen = true
-  modalState.widgetType = widgetType
-}
-
-const closeModal = () => {
-  modalState.isOpen = false
-  modalState.widgetType = ''
-}
-
-// Initialize on mount
 onMounted(() => {
-  fetchDashboardStats()
-
-  // Refresh stats every 30 seconds
-  const interval = setInterval(fetchDashboardStats, 30000)
-
-  // Cleanup interval on unmount
-  return () => clearInterval(interval)
+  // Only fetch if not already cached
+  postsStore.fetchDashboardStats()
+  // Background refresh every 30 s — updates cache silently
+  interval = setInterval(() => postsStore.fetchDashboardStats(true), 30000)
 })
+
+onUnmounted(() => { if (interval) clearInterval(interval) })
 </script>

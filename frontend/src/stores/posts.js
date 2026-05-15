@@ -8,6 +8,29 @@ export const usePostsStore = defineStore('posts', () => {
   const error = ref(null)
   const initialized = ref(false) // Track if data has been loaded
 
+  // Dashboard stats cache — persists across tab switches
+  const dashboardStats = ref({ posts_today: 0, positive_posts: 0, negative_posts: 0, opportunities: 0 })
+  const statsInitialized = ref(false)
+
+  const fetchDashboardStats = async (force = false) => {
+    if (statsInitialized.value && !force) return
+    try {
+      const apiBase = import.meta.env.VITE_API_URL || ''
+      const res = await fetch(`${apiBase}/api/v1/posts/dashboard-stats`)
+      if (!res.ok) throw new Error('stats fetch failed')
+      const data = await res.json()
+      dashboardStats.value = {
+        posts_today:    data.posts_today    ?? 0,
+        positive_posts: data.positive_posts ?? 0,
+        negative_posts: data.negative_posts ?? 0,
+        opportunities:  data.opportunities  ?? 0,
+      }
+      statsInitialized.value = true
+    } catch {
+      // keep existing cached values on error
+    }
+  }
+
   // Helper function to transform monitored_content to legacy post format
   const transformContentToPost = (content) => {
     // Extract cluster type from matched_clusters
@@ -203,6 +226,9 @@ export const usePostsStore = defineStore('posts', () => {
     loading,
     error,
     initialized,
+    dashboardStats,
+    statsInitialized,
+    fetchDashboardStats,
     ownPosts,
     competitorPosts,
     threatPosts,
