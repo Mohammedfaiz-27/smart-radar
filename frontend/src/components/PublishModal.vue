@@ -21,7 +21,7 @@
         <div v-if="post" class="bg-gray-50 rounded-xl p-3 border border-gray-200">
           <p class="text-xs text-gray-500 font-semibold uppercase mb-1">Responding to</p>
           <p class="text-sm text-gray-700 line-clamp-2">{{ post.content }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ post.platform }} · {{ post.author }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ post.platform }} · {{ post.author_username || post.author }}</p>
         </div>
 
         <!-- Response text -->

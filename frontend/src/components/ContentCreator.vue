@@ -24,7 +24,7 @@
             <div class="flex items-center space-x-2 mb-2">
               <span class="text-xs font-semibold text-gray-500 uppercase">Source Post</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-600">{{ post.platform }}</span>
-              <span class="text-xs text-gray-400">{{ post.author }}</span>
+              <span class="text-xs text-gray-400">{{ post.author_username || post.author }}</span>
             </div>
             <p class="text-sm text-gray-800 line-clamp-3">{{ post.content }}</p>
           </div>

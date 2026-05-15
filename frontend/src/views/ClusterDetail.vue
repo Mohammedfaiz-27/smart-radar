@@ -156,7 +156,7 @@
             >
               <div class="flex items-start justify-between mb-2">
                 <div class="flex items-center space-x-2">
-                  <span class="text-sm font-medium text-gray-900">@{{ post.author || 'unknown' }}</span>
+                  <span class="text-sm font-medium text-gray-900">@{{ post.author_username || post.author || 'unknown' }}</span>
                   <span class="text-sm text-gray-500">{{ formatPlatformName(post.platform) }}</span>
                 </div>
                 <span class="text-xs text-gray-500">{{ formatDate(post.posted_at) }}</span>

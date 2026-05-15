@@ -140,7 +140,11 @@ class XCollector(BaseCollector):
                             # Extract tweet data
                             tweet_content = entry.get("content", {})
                             tweet_result = tweet_content.get("itemContent", {}).get("tweet_results", {}).get("result", {})
-                            
+
+                            # Unwrap TweetWithVisibilityResults to get the inner Tweet
+                            if tweet_result and tweet_result.get("__typename") == "TweetWithVisibilityResults":
+                                tweet_result = tweet_result.get("tweet", tweet_result)
+
                             if tweet_result and tweet_result.get("__typename") == "Tweet":
                                 tweets_found = True
                                 tweets_on_page += 1
@@ -194,16 +198,26 @@ class XCollector(BaseCollector):
         # Extract legacy data
         legacy = raw_post.get("legacy", {})
         
-        # Extract user data
-        user_results = raw_post.get("core", {}).get("user_results", {}).get("result", {})
+        # Extract user data — try multiple paths the API may use
+        def _resolve_user(post: Dict[str, Any]) -> Dict[str, Any]:
+            wrapper = post.get("core", {}).get("user_results", {})
+            result = wrapper.get("result", {})
+            return result if result else wrapper
+
+        user_results = _resolve_user(raw_post) or _resolve_user(raw_post.get("tweet", {}))
         user_legacy = user_results.get("legacy", {})
+        # Twitter API moved screen_name/name out of legacy into a separate core object
+        user_core = user_results.get("core", {})
         
         # Parse tweet ID
-        tweet_id = raw_post.get("rest_id", "")
+        tweet_id = raw_post.get("rest_id", "") or raw_post.get("tweet", {}).get("rest_id", "")
         self.logger.debug(f"🆔 Parsing X tweet: {tweet_id}")
         
         # Parse text content - ensure Unicode preservation
-        full_text = legacy.get("full_text", "")
+        full_text = legacy.get("full_text", "") or legacy.get("text", "")
+        if not full_text:
+            rt_legacy = legacy.get("retweeted_status_result", {}).get("result", {}).get("legacy", {})
+            full_text = rt_legacy.get("full_text", "")
         
         # Check if text contains Tamil characters
         has_tamil_text = any('\u0B80' <= char <= '\u0BFF' for char in full_text) if full_text else False
@@ -213,9 +227,26 @@ class XCollector(BaseCollector):
         if has_tamil_text:
             self.logger.info(f"🇮🇳 Found Tamil tweet: {full_text[:100]}{'...' if len(full_text) > 100 else ''}")
         
-        # Parse author info
-        author_username = user_legacy.get("screen_name", "unknown")
+        # Parse author info - Twitter API moved screen_name from legacy into core
+        author_username = (
+            user_core.get("screen_name")
+            or user_core.get("name")
+            or user_legacy.get("screen_name")
+            or user_legacy.get("name")
+            or user_results.get("screen_name")
+            or "unknown"
+        )
         author_followers = user_legacy.get("followers_count", 0)
+        if author_username == "unknown":
+            import json
+            self.logger.warning(
+                f"[X DEBUG] username=unknown for tweet {tweet_id}\n"
+                f"  raw_post top-level keys: {list(raw_post.keys())}\n"
+                f"  core keys: {list(raw_post.get('core', {}).keys())}\n"
+                f"  user_results keys: {list(user_results.keys())}\n"
+                f"  user_legacy keys: {list(user_legacy.keys())}\n"
+                f"  raw_post dump: {json.dumps(raw_post, ensure_ascii=False, default=str)[:800]}"
+            )
         
         # Build tweet URL
         post_url = f"https://twitter.com/{author_username}/status/{tweet_id}"

@@ -151,11 +151,11 @@
                 <div class="flex items-center space-x-3">
                   <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
                     <span class="text-sm font-medium text-gray-600">
-                      {{ (post.author || 'U')[0].toUpperCase() }}
+                      {{ (post.author_username || post.author || 'U')[0].toUpperCase() }}
                     </span>
                   </div>
                   <div>
-                    <div class="text-sm font-medium text-gray-900">@{{ post.author || 'unknown' }}</div>
+                    <div class="text-sm font-medium text-gray-900">@{{ post.author_username || post.author || 'unknown' }}</div>
                     <div class="text-xs text-gray-500">{{ formatDate(post.posted_at) }}</div>
                   </div>
                 </div>

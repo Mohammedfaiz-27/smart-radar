@@ -67,7 +67,17 @@ class PostsTableService:
                         $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,
                         $13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26
                     )
-                    ON CONFLICT (platform, platform_post_id) DO NOTHING
+                    ON CONFLICT (platform, platform_post_id) DO UPDATE
+                        SET author_username = CASE
+                                WHEN posts_table.author_username IN ('unknown', 'Unknown', '')
+                                THEN EXCLUDED.author_username
+                                ELSE posts_table.author_username
+                            END,
+                            author_followers = CASE
+                                WHEN EXCLUDED.author_followers > 0
+                                THEN EXCLUDED.author_followers
+                                ELSE posts_table.author_followers
+                            END
                     RETURNING *
                     """,
                     d["platform_post_id"],

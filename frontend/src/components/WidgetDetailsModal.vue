@@ -77,7 +77,7 @@
                     {{ platformInitial(post.platform) }}
                   </div>
                   <div class="min-w-0">
-                    <p class="text-sm font-semibold text-gray-900 truncate">{{ post.author || 'Unknown' }}</p>
+                    <p class="text-sm font-semibold text-gray-900 truncate">{{ post.author_username || post.author || 'Unknown' }}</p>
                     <p class="text-xs text-gray-400">{{ formatDate(post.posted_at) }} · <span class="capitalize">{{ post.platform || 'unknown' }}</span></p>
                   </div>
                 </div>

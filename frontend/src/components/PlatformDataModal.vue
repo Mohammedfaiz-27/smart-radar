@@ -65,7 +65,7 @@
                   <!-- Post Header -->
                   <div class="flex items-center space-x-3 mb-3">
                     <component :is="getPlatformIcon(post.platform)" class="h-6 w-6 text-gray-500" />
-                    <span class="font-medium text-gray-900">{{ post.author }}</span>
+                    <span class="font-medium text-gray-900">{{ post.author_username || post.author }}</span>
                     <span class="text-sm text-gray-500">
                       {{ formatDate(post.posted_at) }}
                     </span>

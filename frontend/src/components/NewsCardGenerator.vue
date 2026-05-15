@@ -19,7 +19,7 @@
         <div v-if="post" class="bg-gray-50 rounded-xl p-4 border border-gray-200">
           <p class="text-xs font-semibold text-gray-500 uppercase mb-1">Source Post</p>
           <p class="text-sm text-gray-700 line-clamp-3">{{ post.content }}</p>
-          <p class="text-xs text-gray-400 mt-1">{{ post.platform }} · {{ post.author }}</p>
+          <p class="text-xs text-gray-400 mt-1">{{ post.platform }} · {{ post.author_username || post.author }}</p>
         </div>
 
         <!-- Card options -->

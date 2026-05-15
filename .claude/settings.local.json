@@ -65,7 +65,9 @@
       "PowerShell($response = Invoke-RestMethod -Uri \"http://localhost:8001/v1/auth/signin\" -Method POST -ContentType \"application/json\" -Body '{\"email\":\"admin@smartradar.internal\",\"password\":\"SmartRadar2024!\"}'; $token = $response.access_token; $tenant = $response.user.tenant_id; $headers = @{\"Authorization\"=\"Bearer $token\"; \"X-Tenant-ID\"=$tenant}; Write-Host \"--- Social Accounts ---\"; Invoke-RestMethod -Uri \"http://localhost:8001/v1/social-accounts\" -Headers $headers | ConvertTo-Json -Depth 3; Write-Host \"--- Analytics Dashboard ---\"; try { Invoke-RestMethod -Uri \"http://localhost:8001/v1/analytics/dashboard\" -Headers $headers | ConvertTo-Json -Depth 2 } catch { Write-Host \"Error: $\\($_.Exception.Message\\)\" })",
       "PowerShell($response = Invoke-RestMethod -Uri \"http://localhost:8001/v1/auth/signin\" -Method POST -ContentType \"application/json\" -Body '{\"email\":\"admin@smartradar.internal\",\"password\":\"SmartRadar2024!\"}'; $token = $response.access_token; $tenant = $response.user.tenant_id; $headers = @{\"Authorization\"=\"Bearer $token\"; \"X-Tenant-ID\"=$tenant}; $accs = Invoke-RestMethod -Uri \"http://localhost:8001/v1/social-accounts\" -Headers $headers; $accs.accounts | Select-Object id, platform, account_name, status | Format-Table)",
       "Bash(.venv\\\\Scripts\\\\python.exe -c \"import google.generativeai; print\\('gemini ok'\\)\")",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(.venvScriptspython.exe -c ' *)",
+      "Bash(python -c ' *)"
     ],
     "deny": [],
     "ask": []

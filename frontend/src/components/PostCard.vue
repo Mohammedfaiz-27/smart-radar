@@ -10,7 +10,7 @@
         </div>
         <div>
           <p class="text-sm font-medium text-gray-900">
-            {{ post.author }}
+            {{ post.author_username || post.author }}
           </p>
           <p class="text-xs text-gray-500">
             {{ formatDate(post.posted_at) }}

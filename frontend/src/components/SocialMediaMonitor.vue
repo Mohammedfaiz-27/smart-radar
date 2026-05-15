@@ -42,7 +42,7 @@
               </div>
               
               <div class="flex flex-col">
-                <span class="font-medium text-gray-900">{{ post.author }}</span>
+                <span class="font-medium text-gray-900">{{ post.author_username || post.author }}</span>
                 <div class="flex items-center space-x-2 text-sm text-gray-500">
                   <span>{{ formatTimeAgo(post.posted_at) }}</span>
                   <span 

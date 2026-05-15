@@ -131,7 +131,7 @@
               <div class="flex-1 min-w-0">
                 <!-- Meta row -->
                 <div class="flex items-center gap-2 flex-wrap mb-1">
-                  <span class="text-xs font-semibold text-gray-800">{{ post.author || 'Unknown' }}</span>
+                  <span class="text-xs font-semibold text-gray-800">{{ post.author_username || post.author || 'Unknown' }}</span>
                   <span class="text-xs text-gray-400">· {{ post.platform }}</span>
                   <span v-if="post.cluster_name || post.matched_clusters?.[0]?.cluster_name" class="text-xs px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full">{{ post.cluster_name || post.matched_clusters?.[0]?.cluster_name }}</span>
                   <span v-if="post.is_threat || post.intelligence?.threat_level === 'high'" class="text-xs px-2 py-0.5 bg-red-50 text-red-700 rounded-full">⚠ Threat</span>
