@@ -560,35 +560,19 @@ const handleClusterClick = (clusterName) => {
   })
 }
 
-const handlePlatformClick = async (platform, platformData) => {
-  console.log('Opening platform modal for:', platform, platformData)
-  
-  try {
-    // Fetch posts for this platform and cluster type
-    const clusterType = (props.type === 'organization' || props.type === 'own') ? 'own' : 'competitor'
-    const response = await api.get('/api/v1/posts', {
-      params: {
-        cluster_type: clusterType,
-        platform: platform
-      }
-    })
+const handlePlatformClick = (platform, platformData) => {
+  const clusterType = (props.type === 'organization' || props.type === 'own') ? 'own' : 'competitor'
 
-    if (response.data) {
-      const posts = response.data
-      const platformName = formatPlatformName(platform)
-      const title = `${clusterType === 'own' ? 'Our Organization' : 'Competitors'} - ${platformName}`
+  // Filter already-loaded store posts — no API call needed
+  const posts = postsStore.posts.filter(post =>
+    post.cluster_type === clusterType &&
+    post.platform === platform
+  )
 
-      emit('openPlatformModal', {
-        title,
-        posts,
-        platform
-      })
-    } else {
-      console.error('Failed to fetch platform posts')
-    }
-  } catch (error) {
-    console.error('Error fetching platform posts:', error)
-  }
+  const platformName = formatPlatformName(platform)
+  const title = `${clusterType === 'own' ? 'Our Organization' : 'Competitors'} - ${platformName}`
+
+  emit('openPlatformModal', { title, posts, platform })
 }
 
 onMounted(async () => {
